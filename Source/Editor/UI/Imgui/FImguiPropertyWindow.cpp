@@ -436,11 +436,24 @@ void FImguiPropertyWindow::ShowTextSettings(UTextInstanceComponent& TextComp) co
 	ImGui::TextColored(ImVec4(0.5f, 1.0f, 0.5f, 1.0f), "Text Settings");
 
 
-	const char* fontItems[] = { "bazziotf", "dnfbitbitv2", "maplestorybold" };
-	static int currFontIndex = 0;
+	// 아틀라스 텍스처가 있는 폰트만 노출한다. 폰트를 추가하려면 텍스처와 Instance_Text_* 머티리얼을 함께 등록할 것.
+	const char* fontItems[] = { "maplestorybold" };
+	const FName Materials[] = { FName("Instance_Text_Maple") };
+
+	// 선택된 컴포넌트의 현재 머티리얼로부터 콤보 인덱스를 구한다. (컴포넌트마다 폰트가 다를 수 있음)
+	int currFontIndex = 0;
+	const FName CurrentMaterial = TextComp.GetMaterialID();
+	for (int i = 0; i < IM_ARRAYSIZE(Materials); ++i)
+	{
+		if (Materials[i] == CurrentMaterial)
+		{
+			currFontIndex = i;
+			break;
+		}
+	}
+
 	if (ImGui::Combo("Font", &currFontIndex, fontItems, IM_ARRAYSIZE(fontItems)))
 	{
-		const FName Materials[] = { FName("Instance_Text_Bazzi"), FName("Instance_Text_DNF"), FName("Instance_Text_Maple") };
 		const char* selectedFont = fontItems[currFontIndex];
 		TextComp.SetMaterialID((Materials[currFontIndex]));
 		TextComp.SetFont(FName(selectedFont));

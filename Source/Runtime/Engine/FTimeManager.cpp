@@ -5,29 +5,18 @@ FTimeManager::FTimeManager()
 {
     QueryPerformanceFrequency(&Frequency);
     QueryPerformanceCounter(&PrevTime);
-    TargetFrameTime = 1.0f / TargetFPS;
 }
 
 
+// 프레임 제한 없음: 이전 프레임과의 실제 경과 시간만 측정한다.
 void FTimeManager::Update()
 {
     LARGE_INTEGER CurrentTime;
     QueryPerformanceCounter(&CurrentTime);
 
-    float ActualDeltaTime =
+    const float ActualDeltaTime =
         static_cast<float>(CurrentTime.QuadPart - PrevTime.QuadPart) /
         static_cast<float>(Frequency.QuadPart);
-
-    while (ActualDeltaTime < TargetFrameTime)
-    {
-        QueryPerformanceCounter(&CurrentTime);
-
-        ActualDeltaTime =
-            static_cast<float>(CurrentTime.QuadPart - PrevTime.QuadPart) /
-            static_cast<float>(Frequency.QuadPart);
-
-        _mm_pause();
-    }
 
     DeltaTime = bIsRunning ? ActualDeltaTime : 0.0f;
     PrevTime = CurrentTime;

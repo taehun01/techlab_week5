@@ -1,5 +1,6 @@
 ﻿#include "FImguiToolBar.h"
 #include "ThirdParty/Imgui/imgui.h"
+#include "Runtime/Rendering/FRenderer.h"
 
 // "표시명\0패턴\0" 이중 널 종료 필요
 constexpr wchar_t SceneFilter[] = L"Scene Files (*.Scene)\0*.Scene\0All Files (*.*)\0*.*\0";
@@ -23,7 +24,8 @@ void FImguiToolbar::Process(FEditor& Editor, FImguiConsoleWindow& ConsoleWindow,
 // 취소하면 false
 bool FImguiToolbar::PickSceneFile(FString& OutPath, bool bSave)
 {
-    wchar_t Buffer[MAX_PATH]{};               
+    wchar_t Buffer[MAX_PATH]{};
+    const std::wstring InitialDir = GetScenesDirectory().wstring();
 
     OPENFILENAMEW Desc{};
     Desc.lStructSize = sizeof(Desc);
@@ -32,6 +34,7 @@ bool FImguiToolbar::PickSceneFile(FString& OutPath, bool bSave)
     Desc.lpstrFile = Buffer;
     Desc.nMaxFile = MAX_PATH;
     Desc.lpstrDefExt = L"Scene";
+    Desc.lpstrInitialDir = InitialDir.c_str();
     // OFN_NOCHANGEDIR 없으면 대화상자가 프로세스 현재 디렉터리를 바꿔서
     // 이후 상대 경로 로딩(셰이더/텍스처)이 조용히 깨진다
     Desc.Flags = OFN_EXPLORER | OFN_NOCHANGEDIR

@@ -30,7 +30,7 @@ void FEditor::Initialize(USceneManager *SceneManager) {
     SelectedActorTextComp->SetInheritRotation(false);
     SelectedActorTextComp->SetMeshID(FName("Rect"));
     SelectedActorTextComp->SetMaterialID(FName("SelectedActor_Text"));
-    SelectedActorTextComp->SetFont(FName("bazziotf"));
+    SelectedActorTextComp->SetFont(FName("maplestorybold"));
   }
 
   this->SceneManager = SceneManager;
@@ -85,7 +85,6 @@ void FEditor::SaveState() {
   State.SetGridCellSize(Grid.GetCellSize());
   State.SetGizmoMode(static_cast<uint8>(Gizmo.Mode));
   State.SetGizmoSpace(static_cast<uint8>(Gizmo.GetSpace()));
-  State.SetSelectedActor(SelectedActor ? SelectedActor->GetUUID() : static_cast<uint32>(-1));
   State.SetIsViewportSplit(bIsViewportSplit);
   State.SetCenterUV(CenterUV);
 }

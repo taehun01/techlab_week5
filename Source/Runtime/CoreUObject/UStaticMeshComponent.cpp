@@ -35,7 +35,7 @@ const FName& UStaticMeshComponent::GetMeshID() const
     return Super::GetMeshID();
 }
 
-const FName& UStaticMeshComponent::GetMaterialID() const
+FName UStaticMeshComponent::GetMaterialID() const
 {
     return GetMaterial(0);
 }
@@ -49,6 +49,19 @@ FAxisAlignedBoundingBox UStaticMeshComponent::CalcLocalBounds()
     return Super::CalcLocalBounds();
 }
 
+// UV 스크롤은 프레임당 한 번만 갱신한다. GetRenderDatas는 뷰포트·섹션마다 호출되므로 여기서 누적하면 안 된다.
+void UStaticMeshComponent::Update(float DeltaTime)
+{
+    Super::Update(DeltaTime);
+
+    if (bIsMovingUV)
+    {
+        const float MouseDelta = FInputManager::Get().GetMouseWheelScroll();
+        offset -= MouseDelta * 0.05f;
+        offset -= floorf(offset);
+    }
+}
+
 TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
 {
     TArray<FRenderData> OutDatas;
@@ -58,13 +71,7 @@ TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
         return OutDatas;
     }
 
-
     const FName CurrentMeshId = GetMeshID();
-
-    if (!StaticMesh || !StaticMesh->StaticMeshAsset)
-    {
-        return OutDatas;
-    }
 
     const auto& Sections = StaticMesh->StaticMeshAsset->Sections;
 
@@ -84,12 +91,8 @@ TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
 
             if (bIsMovingUV)
             {
-                float MouseDelta = FInputManager::Get().GetMouseWheelScroll();
-                offset -= MouseDelta * 0.05f;
-                offset -= floorf(offset);
                 rdata.Constants.UVOffset.X = offset;
             }
-
 
             OutDatas.push_back(std::move(rdata));
         }
@@ -105,9 +108,6 @@ TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
 
         if (bIsMovingUV)
         {
-            float MouseDelta = FInputManager::Get().GetMouseWheelScroll();
-            offset -= MouseDelta * 0.05f;
-            offset -= floorf(offset);
             rdata.Constants.UVOffset.X = offset;
         }
 

@@ -11,27 +11,6 @@
 #include <ShlObj.h>
 #include <filesystem>
 
-namespace
-{
-    // <디렉토리>/<이름>.Scene 형식으로 씬 경로 생성
-    FString MakeScenePath(const char* SceneName)
-    {
-        PWSTR UserPath = nullptr;
-
-        if (FAILED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &UserPath)))
-            return "";
-
-        std::filesystem::path Path = UserPath;
-        CoTaskMemFree(UserPath);
-
-        Path /= "week3_team9";
-        Path /= "SceneData";
-        Path /= FString(SceneName) + ".Scene";
-
-        return Path.string();
-    }
-}
-
 void FImguiControlPanelWindow::Process(FEditor& Editor)
 {
     const uint64 Count = UObject::GetTotalAllocationCount();

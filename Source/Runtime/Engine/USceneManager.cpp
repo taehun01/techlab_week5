@@ -51,32 +51,49 @@ void USceneManager::LoadScene(const FString& path)
 	std::stringstream buffer;
 	buffer << file.rdbuf();
 
-	nlohmann::json JSON = nlohmann::json::parse(buffer.str());
-	FArchive Archive{ JSON };
-
-	int32 Version = Archive.GetInt32("Version");
-	if (Version != 2)
+	UScene* Scene = nullptr;
+	try
 	{
-		UE_LOG("[LoadScene] 로드하려는 파일의 Scene Schema 버전이 다릅니다. 파일의 버전: %d, 지원하는 버전: %d", Version, 2);
+		nlohmann::json JSON = nlohmann::json::parse(buffer.str());
+		FArchive Archive{ JSON };
+
+		int32 Version = Archive.GetInt32("Version");
+		if (Version != 2)
+		{
+			UE_LOG("[LoadScene] 로드하려는 파일의 Scene Schema 버전이 다릅니다. 파일의 버전: %d, 지원하는 버전: %d", Version, 2);
+			return;
+		}
+
+		if (Archive.IsNull("Scene"))
+		{
+			UE_LOG("[LoadScene] 로드하려는 파일에서 Scene 항목이 없습니다. 파일 형식이 올바르지 않습니다.");
+			return;
+		}
+
+		// UUID는 런타임에 새로 발급하므로, 이미 살아 있는 객체와 겹치지 않도록 NextUUID는 올리기만 한다.
+		const uint32 SavedNextUUID = static_cast<uint32>(Archive.GetInt32("NextUUID"));
+		FUObjectArray& ObjectArray = FUObjectArray::Get();
+		if (SavedNextUUID > ObjectArray.GetNextUUID())
+		{
+			ObjectArray.SetNextUUID(SavedNextUUID);
+		}
+
+		FArchive SceneArchive = Archive.GetArchive("Scene");
+
+		Scene = NewObject<UScene>();
+		Scene->Initialize();
+		Scene->SetRenderResourceLibrary(&FRenderResourceLibrary::Get());
+		Scene->Deserialize(SceneArchive);
+	}
+	catch (const nlohmann::json::exception& Exception)
+	{
+		UE_LOG("[LoadScene] 씬 파일 형식이 올바르지 않습니다: %s", Exception.what());
+		if (Scene)
+		{
+			DestroyObject(Scene);
+		}
 		return;
 	}
-
-	int32 NextUUID = Archive.GetInt32("NextUUID");
-	FUObjectArray& ObjectArray = FUObjectArray::Get();
-	ObjectArray.SetNextUUID(NextUUID);
-
-	if (Archive.IsNull("Scene"))
-	{
-		UE_LOG("[LoadScene] 로드하려는 파일에서 Scene 항목이 없습니다. 파일 형식이 올바르지 않습니다.");
-		return;
-	}
-
-	FArchive SceneArchive = Archive.GetArchive("Scene");
-
-	UScene* Scene = NewObject<UScene>();
-	Scene->Initialize();
-	Scene->SetRenderResourceLibrary(&FRenderResourceLibrary::Get());
-	Scene->Deserialize(SceneArchive);
 
 	SetScene(Scene);
 }

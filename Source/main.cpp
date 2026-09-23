@@ -24,9 +24,6 @@
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg,
                                               WPARAM wParam, LPARAM lParam);
 
-static bool bRequestNewScene = false;
-static bool bRequestSaveScene = false;
-static bool bRequestLoadScene = false;
 static bool bRequestResize = false;
 static UINT ResizeWidth = 0u;
 static UINT ResizeHeight = 0u;
@@ -301,7 +298,6 @@ HWND ShowLoadingWindow(HINSTANCE hInstance)
     }
 }
 
-// TODO: Resizing 처리
 HWND CreateWindowHandle(HINSTANCE Instance, HWND& OutSplashWnd) {
   WNDCLASS WindowClass{};
   WindowClass.lpfnWndProc = WindowCallback;
@@ -418,21 +414,6 @@ LRESULT CALLBACK WindowCallback(HWND Window, UINT Message, WPARAM WParam,
     FInputManager::Get().OnMouseButtonUp(EMouseButton::Middle, Last);
     break;
   }
-  // WM_CA
-  break;
-  case WM_KEYDOWN:
-    switch (WParam) {
-    case VK_F5:
-      bRequestSaveScene = true;
-      break;
-    case VK_F6:
-      bRequestLoadScene = true;
-      break;
-    case VK_F7:
-      bRequestNewScene = true;
-      break;
-    }
-    break;
   default:
     return DefWindowProc(Window, Message, WParam, LParam);
   }

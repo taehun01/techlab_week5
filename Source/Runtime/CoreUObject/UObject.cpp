@@ -28,7 +28,8 @@ void UObject::Serialize(FArchive& Archive) const
 
 void UObject::Deserialize(const FArchive& Archive)
 {
-	UUID = Archive.GetInt32("UUID");
+	// UUID는 생성 시 FUObjectArray가 발급한 값을 유지한다.
+	// 파일 값으로 덮어쓰면 살아 있는 다른 객체와 UUID가 겹칠 수 있다.
 }
 
 void UObject::AddReferencedObjects(FReferenceCollector& Collector)

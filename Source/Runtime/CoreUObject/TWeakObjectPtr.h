@@ -13,8 +13,6 @@ template<typename T>
 class TWeakObjectPtr
 {
 private:
-	//mutable T* RawPtr = nullptr;
-	//mutable uint32 ObjectUUID = 0;
 	uint32 ObjectIndex = 0;
 	uint32 ObjectUUID = 0;
 
@@ -58,24 +56,6 @@ public:
 		if (Object == nullptr || Object->GetUUID() != ObjectUUID)
 			return (nullptr);
 		return (static_cast<T*>(Object));
-
-		//if (RawPtr)
-		//{
-		//	// 생성자 실행 중 등록되어 식별자가 비어있던 경우 갱신
-		//	if (ObjectUUID == 0)
-		//	{
-		//		ObjectUUID = RawPtr->GetUUID();
-		//	}
-
-		//	if (FUObjectArray::Get().IsValid(RawPtr, ObjectUUID))
-		//	{
-		//		return RawPtr;
-		//	}
-		//	// 삭제된 객체인 경우 포인터 초기화
-		//	RawPtr = nullptr;
-		//	ObjectUUID = 0;
-		//}
-		//return nullptr;
 	}
 
 	T* operator->() const { return Get(); }

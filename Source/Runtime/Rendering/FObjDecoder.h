@@ -66,7 +66,7 @@ struct FObjModelData
     TArray<FMeshSection> Sections;
 
     TArray<FObjMaterialInfo> Materials;
-    // Todo: Bin - 메시 캐시에는 정의 대신 참조 MTL 경로와 섹션 ID만 저장한다.
+    // 메시 캐시에는 정의 대신 참조 MTL 경로와 섹션 ID만 저장한다.
     TArray<FString> MaterialLibraryPaths;
     TArray<FObjGroupInfo> Groups;
     TArray<FObjObjectInfo> ObjectNames;
@@ -201,7 +201,7 @@ private:
 
     // 머티리얼 라이브러리
     void AddMaterialLib(std::string_view Line);
-    // Todo: Bin - MTL을 다시 파싱하지 않고 이미 로딩한 정보를 연결한다.
+    // MTL을 다시 파싱하지 않고 이미 로딩한 정보를 연결한다.
     bool ImportMaterialLibrary(const FString& Path);
     void UseMaterial(std::string_view Line);
 
@@ -232,7 +232,7 @@ private:
 private:
     static constexpr std::string_view Spaces = " \t\r\n";
 
-    // Todo: Bin - 이름이 전역적으로 유일한 공유 머티리얼 목록.
+    // 이름이 전역적으로 유일한 공유 머티리얼 목록.
     TArray<FObjMaterialInfo> CachedMaterials;
     bool bMaterialsLoaded = false;
 

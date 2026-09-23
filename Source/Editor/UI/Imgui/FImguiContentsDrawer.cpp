@@ -318,7 +318,7 @@ void FImguiContentsDrawer::RenderContentView()
 				break;
 			}
 
-			// [수정] Min, Max 변수 선언 및 패딩 오프셋 보정 적용
+			// Min, Max 변수 선언 및 패딩 오프셋 보정 적용
 			const ImVec2 Min = ImGui::GetItemRectMin();
 			const ImVec2 Max = ImGui::GetItemRectMax();
 
@@ -355,7 +355,7 @@ void FImguiContentsDrawer::RenderContentView()
 		{
 			FContentDragPayload DragData;
 
-			// [수정] .material 확장자 분기 추가
+			// .material 확장자 분기 추가
 			if (Item.Extension == ".material")
 			{
 				DragData.Kind = FContentDragPayload::EKind::Material;
@@ -428,7 +428,7 @@ void FImguiContentsDrawer::RenderContentView()
 		ImGui::EndGroup();
 		ImGui::PopID();
 
-		// [수정] 우측 경계선을 넘지 않을 때만 SameLine() 호출하여 잘림 방지
+		// 우측 경계선을 넘지 않을 때만 SameLine() 호출하여 잘림 방지
 		const float LastItemX2 = ImGui::GetItemRectMax().x;
 		const float NextItemX2 = LastItemX2 + Style.ItemSpacing.x + ThumbnailSize;
 

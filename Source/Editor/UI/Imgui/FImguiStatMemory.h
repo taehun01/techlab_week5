@@ -60,21 +60,6 @@ struct FImguiStatMemory final
 		const uint32 ColumnCount = 6u;
 		ImGui::Begin("Stat Memory", nullptr, Flags);
 
-		//if (ImGui::BeginTable("Cycle counters", ColumnCount, ImGuiTableFlags_RowBg | ImGuiTableFlags_NoHostExtendX))
-		//{
-		//	ImGui::TableSetupColumn("Cycle counters (flat)", ImGuiTableColumnFlags_WidthFixed, 350.f);
-		//	ImGui::TableSetupColumn("CallCount", ImGuiTableColumnFlags_WidthFixed, 100.f);
-		//	ImGui::TableSetupColumn("InclusiveAvg", ImGuiTableColumnFlags_WidthFixed, 100.f);
-		//	ImGui::TableSetupColumn("InclusiveMax", ImGuiTableColumnFlags_WidthFixed, 100.f);
-		//	ImGui::TableSetupColumn("ExclusiveAvg", ImGuiTableColumnFlags_WidthFixed, 100.f);
-		//	ImGui::TableSetupColumn("ExclusiveMax", ImGuiTableColumnFlags_WidthFixed, 100.f);
-		//	ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 60, 0, 255));
-		//	ImGui::TableHeadersRow();
-		//	ImGui::PopStyleColor();
-
-		//	ImGui::EndTable();
-		//}
-
 		TArray<FMemoryStatRow> MemoryList;
 		MemoryList.clear();
 

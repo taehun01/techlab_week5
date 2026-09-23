@@ -37,7 +37,7 @@ public:
 		static_cast<uint64>(EEngineShowFlags::SF_BoundBox);
 
 
-	void UpdateViewAndCtx(FLightConstants GlobalLight, AActor& SelectedActor, FTransform Transform, FGizmo& Gizmo, UTextInstanceComponent& Textcomp, FGrid& Grid, FVisualizerRegistry* Visual);
+	void UpdateViewAndCtx(FLightConstants GlobalLight, AActor* SelectedActor, FTransform Transform, FGizmo* Gizmo, UTextInstanceComponent* Textcomp, FGrid& Grid, FVisualizerRegistry* Visual);
 
 	void UpdateFocusedAndHovered(bool bFocused, bool bHovered);
 

@@ -1,6 +1,5 @@
 
 #include "FObjDecoder.h"
-// Todo: Bin - 메모리 저장소와 파일 I/O만 분리하고 모델 변환은 이 디코더에서 처리한다.
 #include "FBinArchive.h"
 #include "FWindowsBinReader.h"
 #include "FWindowsBinWriter.h"
@@ -575,7 +574,7 @@ void FObjDecoder::SetSmoothingGroup(std::string_view Line)
 
 // mtllib a.mtl [b.mtl ...]
 // 공백으로 나열된 여러 파일일 수도 있고, 공백이 든 파일명 하나일 수도 있다.
-// Todo: Bin - mtllib 경로 정보는 보존하되 머티리얼 조회 키로 사용하지 않는다.
+// mtllib 경로 정보는 보존하되 머티리얼 조회 키로 사용하지 않는다.
 bool FObjDecoder::ImportMaterialLibrary(const FString& Path)
 {
     if (Path.empty()) return false;
@@ -587,7 +586,7 @@ bool FObjDecoder::ImportMaterialLibrary(const FString& Path)
     return true;
 }
 
-// Todo: Bin - 쪼개서 조회하고, 없으면 공백 포함 파일명 전체를 다시 조회한다.
+// 쪼개서 조회하고, 없으면 공백 포함 파일명 전체를 다시 조회한다.
 void FObjDecoder::AddMaterialLib(std::string_view Line)
 {
 	const std::string_view FullLine = Trim(Line);
@@ -610,7 +609,7 @@ void FObjDecoder::AddMaterialLib(std::string_view Line)
 
 		const FString LibPath = (std::filesystem::path(ObjDirectory) / Name).generic_string();
 
-		// Todo: Bin - MTL 파일 존재 여부 대신 먼저 로딩한 Materials.bin 목록을 조회한다.
+		// MTL 파일 존재 여부 대신 먼저 로딩한 MTL 캐시(.mtl.bin) 목록을 조회한다.
 		if (ImportMaterialLibrary(LibPath)) ++LoadedCount;
 	}
 
@@ -638,7 +637,7 @@ void FObjDecoder::UseMaterial(std::string_view Line)
 	}
 
 	CurrentMaterial = FindOrAddMaterial(Name);
-	// Todo: Bin - 전역 공유 목록에서 이름으로 조회해 기존 파싱 데이터에 연결한다.
+	// 전역 공유 목록에서 이름으로 조회해 기존 파싱 데이터에 연결한다.
 	const FObjMaterialInfo* CachedMaterial = FindCachedMaterial(Name);
 	if (CachedMaterial == nullptr)
 	{
@@ -649,7 +648,7 @@ void FObjDecoder::UseMaterial(std::string_view Line)
 	ObjInfo.Materials[CurrentMaterial] = *CachedMaterial;
 }
 
-// Todo: Bin - 모든 머티리얼 이름은 전역적으로 유일하므로 경로나 합성 ID가 필요 없다.
+// 모든 머티리얼 이름은 전역적으로 유일하므로 경로나 합성 ID가 필요 없다.
 const FObjMaterialInfo* FObjDecoder::FindCachedMaterial(std::string_view MaterialName) const
 {
 	for (const FObjMaterialInfo& Material : CachedMaterials)
@@ -688,7 +687,7 @@ void FObjDecoder::ParseMtlFile(const FString& File)
 		ParseMtlLine(NextLine(Remaining));
 	}
 
-	// Todo: Bin - 실제 등록은 공유 Materials.bin 로딩 단계에서 수행한다.
+	// 실제 등록은 공유 MTL 캐시(.mtl.bin) 로딩 단계에서 수행한다.
 	DefiningMaterial = -1;
 }
 
@@ -1061,7 +1060,7 @@ bool FObjDecoder::CookStaticMesh(const FObjInfo& Info, FObjModelData& Out)
 	Out.Indices.clear();
 	Out.Sections.clear();
 	Out.Materials = Info.Materials;
-	// Todo: Bin - OBJ 디코딩에만 사용하는 Materials는 메시 바이너리에서 제외한다.
+	// OBJ 디코딩에만 사용하는 Materials는 메시 바이너리에서 제외한다.
 	Out.MaterialLibraryPaths = Info.MaterialLibs;
 	Out.Groups = Info.Groups;
 	Out.ObjectNames = Info.ObjectNames;
@@ -1120,7 +1119,7 @@ bool FObjDecoder::CookStaticMesh(const FObjInfo& Info, FObjModelData& Out)
 
 		if (MatIdx >= 0 && MatIdx < static_cast<int32>(Info.Materials.size()))
 		{
-			// Todo: Bin - 전역적으로 유일한 머티리얼 이름을 섹션 참조로 기록한다.
+			// 전역적으로 유일한 머티리얼 이름을 섹션 참조로 기록한다.
 			const auto& Material = Info.Materials[MatIdx];
 			CurrentSection.MaterialName = Material.MaterialName.empty()
 				? "Simple" : Material.MaterialName;
@@ -1260,7 +1259,7 @@ bool FObjDecoder::CookStaticMesh(const FObjInfo& Info, FObjModelData& Out)
 	return (!Out.Indices.empty());
 }
 
-// Todo: Bin - 전체 MTL 캐시 생성용 진입점. 기존 MTL 파서를 재사용한다.
+// 전체 MTL 캐시 생성용 진입점. 기존 MTL 파서를 재사용한다.
 bool FObjDecoder::DecodeMaterialsFromFile(const FString& Path, TArray<FObjMaterialInfo>& OutMaterials)
 {
 	std::ifstream File(Path);
@@ -1283,10 +1282,10 @@ bool FObjDecoder::DecodeMaterialsFromFile(const FString& Path, TArray<FObjMateri
 	return true;
 }
 
-// Todo: Bin - 이 함수는 OBJ 텍스트 파싱만 수행하며 Materials.bin을 만들지 않는다.
+// 이 함수는 OBJ 텍스트 파싱만 수행하며 MTL 캐시(.mtl.bin)를 만들지 않는다.
 bool FObjDecoder::DecodeFromFile(const FString& AbsolutePath, FObjModelData& Out)
 {
-	// Todo: Bin - 현재 디코더가 가진 CachedMaterials를 사용해 직접 OBJ를 파싱한다.
+	// 현재 디코더가 가진 CachedMaterials를 사용해 직접 OBJ를 파싱한다.
 	const FObjInfo Info = StartObjFileParser(AbsolutePath);
 	Out.PathFileName = AbsolutePath;
 
@@ -1393,7 +1392,7 @@ bool FObjDecoder::LoadMaterials(
     return true;
 }
 
-// Todo: Bin - 파싱/캐시 복원 모두 동일한 공유 머티리얼 참조와 속성을 적용한다.
+// 파싱/캐시 복원 모두 동일한 공유 머티리얼 참조와 속성을 적용한다.
 void FObjDecoder::ResolveSectionMaterials(FObjModelData& Model) const
 {
     Model.Materials.clear();
@@ -1402,7 +1401,7 @@ void FObjDecoder::ResolveSectionMaterials(FObjModelData& Model) const
     Model.SpecularTextureName = FName("None");
     for (auto& Section : Model.Sections)
     {
-        // Todo: Bin - Section은 전역적으로 유일한 MaterialName을 직접 참조한다.
+        // Section은 전역적으로 유일한 MaterialName을 직접 참조한다.
         const FObjMaterialInfo* Material = FindCachedMaterial(Section.MaterialName);
         if (Material == nullptr)
         {
@@ -1422,7 +1421,7 @@ void FObjDecoder::ResolveSectionMaterials(FObjModelData& Model) const
         Section.bIsAlpha = Material->Opacity < 0.99f || !Material->AlphaTextureName.empty()
             || Material->IlluminationModel == 4 || Material->IlluminationModel == 6 || Material->IlluminationModel == 7;
 
-        // Todo: Bin - FObjModelData가 원래 보관하던 사용 머티리얼 정보도 복원한다.
+        // FObjModelData가 원래 보관하던 사용 머티리얼 정보도 복원한다.
         const bool bAlreadyAdded = std::any_of(Model.Materials.begin(), Model.Materials.end(),
             [Material](const FObjMaterialInfo& Existing)
             {
@@ -1435,7 +1434,7 @@ void FObjDecoder::ResolveSectionMaterials(FObjModelData& Model) const
         }
     }
 
-    // Todo: Bin - 캐시 적중 시에도 기존 모델의 대표 텍스처 정보를 동일하게 복원한다.
+    // 캐시 적중 시에도 기존 모델의 대표 텍스처 정보를 동일하게 복원한다.
     if (!Model.Materials.empty())
     {
         const FObjMaterialInfo& Material = Model.Materials.front();
@@ -1453,7 +1452,7 @@ void FObjDecoder::ResolveSectionMaterials(FObjModelData& Model) const
     }
 }
 
-// Todo: Bin - Materials.bin은 건드리지 않고 이 OBJ의 캐시만 처리한다.
+// MTL 캐시(.mtl.bin)는 건드리지 않고 이 OBJ의 캐시만 처리한다.
 bool FObjDecoder::LoadObj(const FString& ObjPath, const FString& BinaryPath, FObjModelData& OutModel)
 {
     // Missing MTL files are allowed; ResolveSectionMaterials uses Simple.

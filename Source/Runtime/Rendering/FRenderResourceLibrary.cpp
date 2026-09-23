@@ -23,7 +23,6 @@
 #include <numbers>
 
 
-// Todo: Bin - 파싱과 바이너리 처리는 위에서 포함한 FObjDecoder로 통합.
 
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -172,27 +171,17 @@ const FMaterialEntry materialTable[] = {
     {
         .Id = FName("Text"),
         .PipelineID = FName("Text"),
-        .TextureName = "bazziotf",
+        .TextureName = "maplestorybold",
     },
     {
         .Id = FName("Textured"),
         .PipelineID = FName("Textured"),
-        .TextureName = "Question_Block",
+        .TextureName = "texture",
     },
     {
         .Id = FName("Billboard"),
         .PipelineID = FName("Billboard"),
-        .TextureName = "uv-test",
-    },
-    {
-        .Id = FName("Instance_Text_Bazzi"),
-        .PipelineID = FName("Instance_Text"),
-        .TextureName = "bazziotf",
-    },
-    {
-        .Id = FName("Instance_Text_DNF"),
-        .PipelineID = FName("Instance_Text"),
-        .TextureName = "dnfbitbitv2",
+        .TextureName = "texture",
     },
     {
         .Id = FName("Instance_Text_Maple"),
@@ -219,7 +208,7 @@ const FMaterialEntry materialTable[] = {
     {
         .Id = FName("SelectedActor_Text"),
         .PipelineID = FName("SelectedActor_Text"),
-        .TextureName = "bazziotf",
+        .TextureName = "maplestorybold",
     },
         {
         .Id = FName("MasterYi"),
@@ -568,7 +557,7 @@ bool FRenderResourceLibrary::Initialize(FRenderer& Renderer) {
 
 
 TSharedPtr<FMaterial> FRenderResourceLibrary::CreateAndRegisterMaterialFromInfo(const FObjMaterialInfo& Info) {
-    // Todo: Bin - 모든 OBJ 머티리얼 이름은 전역적으로 유일하므로 이름을 등록 키로 사용한다.
+    // 모든 OBJ 머티리얼 이름은 전역적으로 유일하므로 이름을 등록 키로 사용한다.
     FString MaterialKey = Info.MaterialName;
     //std::transform(MaterialKey.begin(), MaterialKey.end(), MaterialKey.begin(), ::tolower);
 
@@ -614,7 +603,7 @@ TSharedPtr<FMaterial> FRenderResourceLibrary::CreateAndRegisterMaterialFromInfo(
     Material->SetDiffuseColor(FVector4(Info.Diffuse.X, Info.Diffuse.Y, Info.Diffuse.Z, Info.Opacity));
 
     // 라이브러리에 등록 후 반환
-    // Todo: Bin - 여러 메시와 섹션은 이 등록 키를 공유한다.
+    // 여러 메시와 섹션은 이 등록 키를 공유한다.
     return RegisterMaterial(MaterialKey, Material);
 }
 
@@ -667,7 +656,7 @@ bool FRenderResourceLibrary::CreateUStaticMeshMap() {
         StaticMeshObj->MeshId = Key;
         StaticMeshObj->SetStaticMeshAsset(Mesh);
 
-        // [수정] 외부 생성 함수를 호출하지 않고 머티리얼 슬롯만 지정
+        // 외부 생성 함수를 호출하지 않고 머티리얼 슬롯만 지정
         if (Key == "Spotlight")
         {
             StaticMeshObj->Materials.push_back("Spotlight");
@@ -1697,7 +1686,7 @@ bool FRenderResourceLibrary::CreateObjMeshes()
 
         const FString ObjPath = std::filesystem::absolute(ObjFile).string();
 
-        // Todo: Bin - OBJ 캐시는 Resources/Assets/<메시 이름>.bin으로 저장한다.
+        // OBJ 캐시는 Resources/Assets/Bins/<메시 이름>.bin으로 저장한다.
         const FString CacheName = StemName + BIN_EXTENSION;
         const FString BinaryPath = (AssetRoot / "Bins" / CacheName).string();
 

@@ -25,7 +25,6 @@ void FEditorState::WriteToFile(FStringView FilePath) const
 	// Gizmo
 	Archive.SetUInt32("Gizmo", "Mode", GizmoMode);
 	Archive.SetUInt32("Gizmo", "Space", GizmoSpace);
-	Archive.SetUInt32("Gizmo", "SelectedActor", SelectedActor);
 
 	// Viewport
 	Archive.SetBool("Viewport", "IsSplit", bIsviewportSplit);
@@ -121,11 +120,6 @@ void FEditorState::ReadFromFile(FStringView FilePath)
 	if (!Archive.IsEmpty("Gizmo", "Space"))
 	{
 		GizmoSpace = static_cast<uint8>(Archive.GetUInt32("Gizmo", "Space"));
-	}
-
-	if (!Archive.IsEmpty("Gizmo", "SelectedActor"))
-	{
-		SelectedActor = Archive.GetUInt32("Gizmo", "SelectedActor");
 	}
 
 	// Viewport
@@ -246,13 +240,6 @@ void FEditorState::SetGizmoSpace(uint8 Value)
 {
 	if (GizmoSpace == Value) { return; }
 	GizmoSpace = Value;
-	bDirty = true;
-}
-
-void FEditorState::SetSelectedActor(uint32 Value)
-{
-	if (SelectedActor == Value) { return; }
-	SelectedActor = Value;
 	bDirty = true;
 }
 

@@ -1,4 +1,3 @@
-// Todo: Bin - 이 파일 전체는 바이너리 캐시 기능을 위해 추가한 구현이다.
 #pragma once
 
 #include <cassert>

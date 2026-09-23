@@ -24,7 +24,7 @@ public:
     void SetMaterialID(const FName& InMaterialId)   { RenderDatas.at(0).MaterialId = InMaterialId; }
     void SetTextureID(const FName& InTextureId)     { RenderDatas.at(0).TextureId = InTextureId; }
     virtual const FName& GetMeshID() const       { return RenderDatas.at(0).MeshId; }
-    virtual const FName& GetMaterialID() const   { return RenderDatas.at(0).MaterialId; }
+    virtual FName GetMaterialID() const          { return RenderDatas.at(0).MaterialId; }
     const FName& GetTextureID() const            { return RenderDatas.at(0).TextureId; }
 
     // 텍스처 이름으로 머티리얼 텍스처 교체

@@ -19,7 +19,6 @@
 
 #include "Runtime/Actors/AActor.h"
 #include "Runtime/Actors/AInstancingActor.h"
-#include "Runtime/Actors/TestTextActor.h"
 #include "Runtime/CoreUObject/UPlaneComp.h"
 #include "Runtime/CoreUObject/USphereComp.h"
 #include "Runtime/Core/FStatRegistry.h"
@@ -294,7 +293,7 @@ void FEditorApplication::Render() {
 
         FGizmo* Gizmo = Editor.ObjectSelected() ? &Editor.GetGizmo() : nullptr;
         UTextInstanceComponent* Text = Editor.ObjectSelected() ? Editor.GetTextcomp() : nullptr;
-        EditorViewport.UpdateViewAndCtx(Editor.GlobalLight, *Editor.GetSelectedActor(), Editor.SelectedTransform, *Gizmo, *Text, Editor.GetGrid(), &VisualizerRegistry);
+        EditorViewport.UpdateViewAndCtx(Editor.GlobalLight, Editor.GetSelectedActor(), Editor.SelectedTransform, Gizmo, Text, Editor.GetGrid(), &VisualizerRegistry);
 
         // 뷰포트 렌더링 명세 구성
         if (EditorViewport.editorCtx.SelectedActor) {

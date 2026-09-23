@@ -31,8 +31,8 @@ private:
 	LARGE_INTEGER PrevTime;
 	LARGE_INTEGER Frequency;
 	
+	// 프레임 제한에는 쓰지 않는다. 통계 그래프(FStatHistory)의 샘플 창 크기 기준값.
 	float TargetFPS = 60.0f;
-	float TargetFrameTime;
 	float DeltaTime = 0.0f;
 
 	bool bIsRunning = false;
