@@ -22,7 +22,7 @@ float4 MainPS(PS_INPUT Input) : SV_Target
     
     // 하이라이트 색상 보간
     float3 Tint = lerp(float3(1.0f, 1.0f, 1.0f), ColorOverride, ColorOverrideAmount);
-    float3 BaseColor = Sampled.rgb * Tint;
+    float3 BaseColor = Sampled.rgb * MaterialDiffuse.rgb * Tint;
 
     // 탄젠트 공간 기저 정규화
     float3 N = normalize(Input.Normal);

@@ -611,7 +611,7 @@ TSharedPtr<FMaterial> FRenderResourceLibrary::CreateAndRegisterMaterialFromInfo(
     }
 
     Material->SetPipeLine(GetPipeline(PipelineName));
-
+    Material->SetDiffuseColor(FVector4(Info.Diffuse.X, Info.Diffuse.Y, Info.Diffuse.Z, Info.Opacity));
 
     // 라이브러리에 등록 후 반환
     // Todo: Bin - 여러 메시와 섹션은 이 등록 키를 공유한다.

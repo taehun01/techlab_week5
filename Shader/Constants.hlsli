@@ -8,6 +8,7 @@ cbuffer ObjectConstants : register(b0)
     row_major float4x4 World;
     float DisableShading;
     float3 ObjectPadding;
+    float4 MaterialDiffuse;
 }
 
 cbuffer FrameConstants : register(b1)

@@ -3,6 +3,7 @@
 #include "Runtime/Math/FMatrix.h"
 #include "Runtime/Math/FVector.h"
 #include "Runtime/Math/FVector2.h"
+#include "Runtime/Math/FVector4.h"
 
 
 // b0에 바인딩
@@ -15,6 +16,7 @@ struct FObjectConstants {
   FMatrix World = FMatrix::GetIdentity();
   float DisableShading = 0.0f;
   FVector Padding;
+  FVector4 MaterialDiffuse{ 1.f, 1.f, 1.f, 1.f };
 };
 static_assert(sizeof(FObjectConstants) % 16 == 0);
 

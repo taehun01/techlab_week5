@@ -27,8 +27,8 @@ struct FPreviewRenderTarget;
 class UStaticMesh;
 
 inline FWString GetExecutableDirectory() {
-    wchar_t Buffer[256];
-    GetModuleFileNameW(nullptr, Buffer, 256);
+    wchar_t Buffer[MAX_PATH * 4];
+    GetModuleFileNameW(nullptr, Buffer, MAX_PATH * 4);
     return std::filesystem::path(Buffer).parent_path();
 }
 
@@ -161,7 +161,9 @@ public:
         bool bApplyViewMode = true
     )
     {
-        UpdateBuffer(Constants, Slot);
+        TConstants LocalConstants = Constants;
+        LocalConstants.MaterialDiffuse = Material.GetDiffuseColor();
+        UpdateBuffer(LocalConstants, Slot);
 
         TSharedPtr<FRenderPipeline> Pipeline = Material.Pipeline;
         if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {

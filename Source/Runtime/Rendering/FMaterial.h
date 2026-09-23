@@ -64,6 +64,9 @@ public:
     return Pipeline ? Pipeline->GetPipelineDesc().BlendMode : EBlendMode::Opaque;
   }
 
+  void SetDiffuseColor(FVector4 InDiffuseColor) { DiffuseColor = InDiffuseColor; }
+  const FVector4 GetDiffuseColor() const { return DiffuseColor; };
+
   FString MaterialId;
 private:
   void BindResources(ID3D11DeviceContext &Context) const;
@@ -72,6 +75,8 @@ private:
   TSharedPtr<FRenderPipeline> WireframePipeline;
 
   TSharedPtr<FTexture> Textures[static_cast<size_t>(EMaterialTextureSlot::Count)];
+
+  FVector4 DiffuseColor{ 1.f, 1.f, 1.f, 1.f };
 };
 
 

@@ -25,6 +25,8 @@ struct FVector
 	// [[nodiscard]] explicit FVector(const FVector2& V, float InZ);
 	[[nodiscard]] FVector(const FVector4& V);
 
+	[[nodiscard]] void operator=(const FVector& V);
+
 	[[nodiscard]] FVector operator+(const FVector& V) const;
 
 	template<typename ScalarType> 
@@ -102,6 +104,13 @@ inline const FVector FVector::LeftVector{ 0.0f, -1.0f, 0.0f };
 constexpr FVector::FVector(float InX, float InY, float InZ)
 	: X(InX), Y(InY), Z(InZ)
 {}
+
+inline void FVector::operator=(const FVector& V) 
+{
+	X = V.X;
+	Y = V.Y;
+	Z = V.Z;
+}
 
 inline FVector FVector::operator+(const FVector& V) const
 {

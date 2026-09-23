@@ -11,7 +11,7 @@ AStaticMeshActor::AStaticMeshActor()
 {
 	// 정적 메시 컴포넌트 생성 및 루트 장착
 	CreateRootComponent(UStaticMeshComponent::StaticClass());
-	SetColor(FVector{ 1.0f, 1.0f, 1.0f });
+	//SetColor(FVector{ 1.0f, 1.0f, 1.0f });
 
 	if (auto* Comp = GetStaticMeshComponent())
 	{

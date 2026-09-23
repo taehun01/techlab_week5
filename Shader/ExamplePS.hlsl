@@ -10,7 +10,7 @@ struct PS_INPUT
 
 float4 MainPS(PS_INPUT Input) : SV_Target
 {
-    float3 BaseColor = lerp(Input.Color.rgb, ColorOverride, ColorOverrideAmount);
+    float3 BaseColor = lerp((Input.Color.rgb * MaterialDiffuse.rgb), ColorOverride, ColorOverrideAmount);
 
     if (DisableShading > 0.5f)
     {

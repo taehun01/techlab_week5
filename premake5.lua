@@ -127,6 +127,11 @@ project "MyEngine"
             'if exist "$(SolutionDir)Resources\\Textures" xcopy /Y /D /I /E "$(SolutionDir)Resources\\Textures\\" "$(OutDir)Textures\\"',
             'if exist "$(SolutionDir)Resources\\Edit" xcopy /Y /D /I /E "$(SolutionDir)Resources\\Edit\\" "$(OutDir)Edit\\"',
             'if exist "$(SolutionDir)Fonts" xcopy /Y /D /I /E "$(SolutionDir)Fonts\\" "$(OutDir)Fonts\\"',
+        }
+
+    -- Resources 통째 복사는 Release(배포)에서만. Debug는 프로젝트 루트의 Resources를 직접 읽음
+    filter "configurations:Release"
+        postbuildcommands {
             'xcopy /Y /D /I /E "$(ProjectDir)Resources" "$(OutDir)Resources"',
             'if errorlevel 1 exit /b 1',
         }
