@@ -17,7 +17,7 @@ public:
 
     // UMeshComponent 식별자 오버라이드
     const FName& GetMeshID() const override;
-    const FName& GetMaterialID() const override;
+    FName GetMaterialID() const override;
     FAxisAlignedBoundingBox CalcLocalBounds() override;
 
 

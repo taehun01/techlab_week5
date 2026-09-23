@@ -35,7 +35,7 @@ const FName& UStaticMeshComponent::GetMeshID() const
     return Super::GetMeshID();
 }
 
-const FName& UStaticMeshComponent::GetMaterialID() const
+FName UStaticMeshComponent::GetMaterialID() const
 {
     return GetMaterial(0);
 }
