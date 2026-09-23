@@ -614,7 +614,7 @@ void FImguiPreviewEditorWindow::DrawMeshDetailsPanel()
 
 void FImguiPreviewEditorWindow::DrawMaterialDetailsPanel()
 {
-	// [수정] 복제본 인스턴스(PreviewMaterialInstance) 유효성 검사
+	// 복제본 인스턴스(PreviewMaterialInstance) 유효성 검사
 	if (!PreviewMaterialInstance)
 	{
 		ImGui::TextDisabled("No material preview instance available");
@@ -629,7 +629,7 @@ void FImguiPreviewEditorWindow::DrawMaterialDetailsPanel()
 	ImGui::TextColored(ImVec4(0.8f, 0.8f, 0.8f, 1.0f), "Texture Parameters");
 	ImGui::TextDisabled("Base Color / Diffuse");
 
-	// [수정] PreviewMaterialInstance에서 텍스처 조회
+	// PreviewMaterialInstance에서 텍스처 조회
 	auto DiffuseTex = PreviewMaterialInstance->GetDiffuseMap();
 	ID3D11ShaderResourceView* DiffuseSRV = DiffuseTex ? DiffuseTex->GetSRV() : nullptr;
 
@@ -675,7 +675,7 @@ void FImguiPreviewEditorWindow::DrawMaterialDetailsPanel()
 
 				if (NewTex)
 				{
-					// [수정] 원본이 아닌 복제본(PreviewMaterialInstance)에 세팅
+					// 원본이 아닌 복제본(PreviewMaterialInstance)에 세팅
 					PreviewMaterialInstance->SetDiffuseMap(NewTex);
 					bIsDirty = true;
 				}

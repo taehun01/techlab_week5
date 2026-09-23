@@ -293,7 +293,7 @@ void FEditorApplication::Render() {
 
         FGizmo* Gizmo = Editor.ObjectSelected() ? &Editor.GetGizmo() : nullptr;
         UTextInstanceComponent* Text = Editor.ObjectSelected() ? Editor.GetTextcomp() : nullptr;
-        EditorViewport.UpdateViewAndCtx(Editor.GlobalLight, *Editor.GetSelectedActor(), Editor.SelectedTransform, *Gizmo, *Text, Editor.GetGrid(), &VisualizerRegistry);
+        EditorViewport.UpdateViewAndCtx(Editor.GlobalLight, Editor.GetSelectedActor(), Editor.SelectedTransform, Gizmo, Text, Editor.GetGrid(), &VisualizerRegistry);
 
         // 뷰포트 렌더링 명세 구성
         if (EditorViewport.editorCtx.SelectedActor) {

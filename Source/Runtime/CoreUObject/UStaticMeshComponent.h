@@ -10,6 +10,7 @@ class UStaticMeshComponent : public UMeshComponent {
 
 public:
     void Initialize() override;
+    void Update(float DeltaTime) override;
 
     // StaticMesh 에셋 설정 및 조회
     bool SetStaticMesh(UStaticMesh* InStaticMesh);

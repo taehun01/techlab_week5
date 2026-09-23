@@ -97,55 +97,13 @@ void FRenderer::SetViewportUV(FVector2 TopLeftUV, FVector2 LengthUV) {
   Context->PSSetConstantBuffers(1, 1, FrameConstantBuffer.GetAddressOf());
 };
 
-// void FRenderer::Draw(const FMesh &Mesh, const FMaterial &Material,
-//                      const FObjectConstants &ObjectConstants) {
-//   UpdateObjectConstants(ObjectConstants);
-//
-//   TSharedPtr<FRenderPipeline> Pipeline = Material.Pipeline;
-//   if (CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-//     Pipeline = GetPipeline(EBuiltinPipeline::Simple_Wireframe);
-//   }
-//
-//   if (Pipeline) {
-//     Pipeline->Bind(*Context.Get());
-//   }
-//
-//   Material.BindResources(*Context.Get());
-//   Mesh.BindResources(*Context.Get());
-//
-//   Context->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
-//
-//   if (Mesh.HasIndices()) {
-//     Context->DrawIndexed(Mesh.IndexCount, 0, 0);
-//   } else {
-//     Context->Draw(Mesh.VertexCount, 0);
-//   }
-// }
-//
-// void FRenderer::DrawGrid(const FMesh &Mesh, const FMaterial &Material,
-//                          const FGridConstants &GridConstants) {
-//   UpdateGridConstants(GridConstants);
-//   const auto &Pipeline = Material.Pipeline;
-//
-//   Pipeline->Bind(*Context.Get());
-//   Material.BindResources(*Context.Get());
-//   Mesh.BindResources(*Context.Get());
-//
-//   Context->OMSetBlendState(nullptr, nullptr, 0xFFFFFFFF);
-//
-//   if (Mesh.HasIndices()) {
-//     Context->DrawIndexed(Mesh.IndexCount, 0, 0);
-//   } else {
-//     Context->Draw(Mesh.VertexCount, 0);
-//   }
-// }
-
 void FRenderer::ClearDepth() {
   Context->ClearDepthStencilView(
       DepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
-void FRenderer::SwapBuffer() { SwapChain->Present(1u, 0u); }
+// VSync 끔: 프레임을 제한하지 않는다.
+void FRenderer::SwapBuffer() { SwapChain->Present(0u, 0u); }
 
 void FRenderer::OnWindowSize(UINT Width, UINT Height) {
   Context->OMSetRenderTargets(0, nullptr, nullptr);

@@ -16,15 +16,6 @@ struct FInstanceData
     FVector2 UVOffset;
 };
 
-//struct FInstanceData
-//{
-//	FMatrix Word;
-//    FMatrix Model;
-//	FVector4 Color;
-//	FVector2 UV;
-//	FVector2 UVOffset;
-//};
-
 // 공용 정점 구조체
 struct FVertexData {
   float x = 0.0f, y = 0.0f, z = 0.0f;           // Position

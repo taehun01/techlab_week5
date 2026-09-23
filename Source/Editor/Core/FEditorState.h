@@ -39,7 +39,6 @@ private:
   // Gizmo
   uint8 GizmoMode = 1;
   uint8 GizmoSpace = 0;
-  uint32 SelectedActor = -1;
 
   // viewportsplit
   bool bIsviewportSplit = false;
@@ -84,9 +83,6 @@ public:
 
   void SetGizmoSpace(uint8 Value);
   uint8 GetGizmoSpace() const { return GizmoSpace; }
-
-  void SetSelectedActor(uint32 Value);
-  const uint32 GetSelectedActor() const { return SelectedActor; }
 
   void SetIsViewportSplit(bool Value);
   bool GetIsViewportSplit() const { return bIsviewportSplit; }

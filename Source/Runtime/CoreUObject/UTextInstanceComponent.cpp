@@ -36,13 +36,13 @@ FMatrix GetRenderMatrix(const FTransform &Transform, const FCamera &Camera) {
 
 void UTextInstanceComponent::Initialize() {
   
-  SetFont("bazziotf");
+  SetFont("maplestorybold");
   RebuildTextMesh();
   Super::Initialize();
 
   RenderDatas.at(0).MeshId = FName("Rect");
-  RenderDatas.at(0).MaterialId = FName("Instance_Text_Bazzi");
-  RenderDatas.at(0).TextureId = FName("bazziotf");
+  RenderDatas.at(0).MaterialId = FName("Instance_Text_Maple");
+  RenderDatas.at(0).TextureId = FName("maplestorybold");
 
 }
 
@@ -52,12 +52,6 @@ void UTextInstanceComponent::SetText(const FWString &InText) {
   Text = InText;
   RebuildTextMesh();
 }
-
-//void UTextInstanceComponent::SetFont(TSharedPtr<FFont> InFont) {
-//  Font = InFont;
-//  RenderData.TextureId = FName("bazziotf");
-//  RebuildTextMesh();
-//}
 
 void UTextInstanceComponent::SetFont(const FName& InName) {
   Font = FRenderResourceLibrary::Get().GetFont(InName);

@@ -5,8 +5,8 @@
 #include "ThirdParty/Imgui/imgui_impl_win32.h"
 
 
-void FEditorViewport::UpdateViewAndCtx(FLightConstants GlobalLight, AActor& SelectedActor, FTransform Transform, 
-    FGizmo& Gizmo, UTextInstanceComponent& Textcomp, FGrid& Grid, FVisualizerRegistry* Visual)
+void FEditorViewport::UpdateViewAndCtx(FLightConstants GlobalLight, AActor* SelectedActor, FTransform Transform, 
+    FGizmo* Gizmo, UTextInstanceComponent* Textcomp, FGrid& Grid, FVisualizerRegistry* Visual)
 {
 
     sceneView.Camera = &ViewportCamera;
@@ -19,10 +19,10 @@ void FEditorViewport::UpdateViewAndCtx(FLightConstants GlobalLight, AActor& Sele
 
     // 에디터 렌더링 컨텍스트 구성
 
-    editorCtx.SelectedActor = &SelectedActor;
+    editorCtx.SelectedActor = SelectedActor;
     editorCtx.SelectedTransform = Transform;
-    editorCtx.Gizmo = &Gizmo;
-    editorCtx.TextComp = &Textcomp;
+    editorCtx.Gizmo = Gizmo;
+    editorCtx.TextComp = Textcomp;
     editorCtx.Grid = &Grid;
     editorCtx.VisualizerRegistry = Visual;
 

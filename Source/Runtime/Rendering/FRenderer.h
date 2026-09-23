@@ -51,6 +51,34 @@ inline std::filesystem::path GetResourcesDirectory()
     return {};
 }
 
+// premake5.lua가 있는 폴더를 프로젝트 루트로 본다. 찾지 못하면 실행 파일 폴더를 쓴다.
+inline std::filesystem::path GetProjectRootDirectory()
+{
+    const std::filesystem::path ExeDir(GetExecutableDirectory());
+    for (std::filesystem::path Dir = ExeDir; !Dir.empty(); Dir = Dir.parent_path())
+    {
+        std::error_code Error;
+        if (std::filesystem::exists(Dir / L"premake5.lua", Error))
+        {
+            return Dir;
+        }
+        if (Dir == Dir.root_path())
+        {
+            break;
+        }
+    }
+    return ExeDir;
+}
+
+// 씬 파일 기본 폴더(<프로젝트 루트>/Scenes). 없으면 만든다.
+inline std::filesystem::path GetScenesDirectory()
+{
+    const std::filesystem::path Dir = GetProjectRootDirectory() / L"Scenes";
+    std::error_code Error;
+    std::filesystem::create_directories(Dir, Error);
+    return Dir;
+}
+
 #include "Runtime/Engine/ShowFlags.h"
 
 class FRenderer final {
