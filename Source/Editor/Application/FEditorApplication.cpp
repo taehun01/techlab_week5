@@ -19,7 +19,6 @@
 
 #include "Runtime/Actors/AActor.h"
 #include "Runtime/Actors/AInstancingActor.h"
-#include "Runtime/Actors/TestTextActor.h"
 #include "Runtime/CoreUObject/UPlaneComp.h"
 #include "Runtime/CoreUObject/USphereComp.h"
 #include "Runtime/Core/FStatRegistry.h"
