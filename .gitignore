@@ -1,0 +1,22 @@
+# Build outputs
+Binaries/
+Intermediate/
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+
+# Dear ImGui
+imgui.ini
+
+# Editor Config
+editor.ini
+
+# Cursor / VS Code / clangd (local IntelliSense)
+.vscode/
+.clangd
+compile_flags.txt
+compile_commands.json
+.cache/
+# Todo: Bin - Generated OBJ/material binary caches
+/Resources/Assets/*.bin

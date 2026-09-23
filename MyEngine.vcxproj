@@ -1,0 +1,681 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Analysis|Win32">
+      <Configuration>Analysis</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Analysis|x64">
+      <Configuration>Analysis</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="ObjViewerDebug|Win32">
+      <Configuration>ObjViewerDebug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="ObjViewerDebug|x64">
+      <Configuration>ObjViewerDebug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{05383b45-2b78-451c-9197-8b61474a12bc}</ProjectGuid>
+    <RootNamespace>MyEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Analysis|Win32'">
+    <PlatformToolset>v145</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Analysis|x64'">
+    <PlatformToolset>v145</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|x64'">
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|Win32'">
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Analysis|Win32'">
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Analysis|x64'">
+    <EnableClangTidyCodeAnalysis>true</EnableClangTidyCodeAnalysis>
+    <OutDir>$(SolutionDir)Binaries\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)Intermediate\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <ClangTidyChecks>clang-analyzer-*</ClangTidyChecks>
+    <CodeAnalysisRuleSet>CodeAnalysis.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NOMINMAX;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NOMINMAX;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NOMINMAX;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NOMINMAX;_DEBUG;_CONSOLE;%(PreprocessorDefinitions); </PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>IS_OBJ_VIEWER=1;NOMINMAX;_DEBUG;_CONSOLE;%(PreprocessorDefinitions);</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NOMINMAX;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <Manifest>
+      <EnableSegmentHeap>true</EnableSegmentHeap>
+    </Manifest>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Analysis|Win32'">
+    <ClCompile>
+      <EnablePREfast>true</EnablePREfast>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Analysis|x64'">
+    <ClCompile>
+      <EnablePREfast>true</EnablePREfast>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir)Source;$(SolutionDir)Source\ThirdParty\DirectXTK;$(SolutionDir)Source\ThirdParty\DirectXTK\Inc;$(SolutionDir)Source\ThirdParty\DirectXTK\Src</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>user32.lib;d3d11.lib;dxgi.lib;d3dcompiler.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <FxCompile>
+      <ObjectFileOutput>$(OutDir)Shader\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel>5.0</ShaderModel>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\Editor\Application\FEditorApplication.cpp" />
+    <ClCompile Include="Source\Editor\Core\FConfigArchive.cpp" />
+    <ClCompile Include="Source\Editor\Core\FEditor.cpp" />
+    <ClCompile Include="Source\Editor\Core\FEditorState.cpp" />
+    <ClCompile Include="Source\Editor\EditorViewport\FEditorViewport.cpp" />
+    <ClCompile Include="Source\Editor\Gizmo\FGizmo.cpp" />
+    <ClCompile Include="Source\Editor\Grid\FGrid.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiConsoleWindow.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiContentsDrawer.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiControlPanelWindow.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiDragDrop.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiEditorViewportWindow.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiManager.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiPreviewEditorWindow.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiPropertyWindow.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiToolBar.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FImguiWorldOutliner.cpp" />
+    <ClCompile Include="Source\Editor\UI\Imgui\FimguiWorlOutliner.cpp" />
+    <ClCompile Include="Source\Editor\Visualizer\FBillboardVisualizer.cpp" />
+    <ClCompile Include="Source\Editor\Visualizer\FPrimitiveVisualizer.cpp" />
+    <ClCompile Include="Source\Editor\Visualizer\FSpotlightVisualizer.cpp" />
+    <ClCompile Include="Source\Editor\Visualizer\FTextVisualizer.cpp" />
+    <ClCompile Include="Source\Editor\Visualizer\FVisualizerRegistry.cpp" />
+    <ClCompile Include="Source\main.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\AActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\AAnimatedBillboardActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\ABillboardActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\ACubeActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\ACylinderActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\AInstancingActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\AMasterYi.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\ASphereActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\ASpotlightActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\AStaticMeshActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\ATextRenderActor.cpp" />
+    <ClCompile Include="Source\Runtime\Actors\TestTextActor.cpp" />
+    <ClCompile Include="Source\Runtime\Core\FName.cpp" />
+    <ClCompile Include="Source\Runtime\Core\FNamePool.cpp" />
+    <ClCompile Include="Source\Runtime\Core\FObjectIterator.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\FGarbageCollector.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\FReferenceCollector.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\FUObjectArray.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UAnimatedBillboardComp.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UBillBoardComp.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UClass.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UConeComp.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UCubeComp.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UCylinderComp.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UInstancePrimitiveComponent.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UMeshComponent.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UObject.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UPlaneComp.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UPrimitiveComponent.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\USceneComponent.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\USphereComp.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\USpotLightComponent.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UStaticMesh.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UStaticMeshComponent.cpp" />
+    <ClCompile Include="Source\Runtime\CoreUObject\UTextInstanceComponent.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\FArchive.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\FCamera.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\FRayCastingManager.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\FRenderView.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\FTimeManager.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\UScene.cpp" />
+    <ClCompile Include="Source\Runtime\Engine\USceneManager.cpp" />
+    <ClCompile Include="Source\Runtime\Geometry\FAxisAlignedBoundingBox.cpp" />
+    <ClCompile Include="Source\Runtime\Input\FCameraInputController.cpp" />
+    <ClCompile Include="Source\Runtime\Input\FInputManager.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FBinArchive.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FFont.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FLineBatcher.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FMaterial.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FMesh.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FObjDecoder.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FPreviewRenderTarget.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FRenderer.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FRenderPipeline.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FRenderResourceLibrary.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FWindowsBinReader.cpp" />
+    <ClCompile Include="Source\Runtime\Rendering\FWindowsBinWriter.cpp" />
+    <ClCompile Include="Source\Runtime\Utility\EngineUtil.cpp" />
+    <ClCompile Include="Source\Runtime\Utility\WindowsUtil.cpp" />
+    <ClCompile Include="Source\ThirdParty\Imgui\imgui.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="Source\ThirdParty\Imgui\imgui_demo.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="Source\ThirdParty\Imgui\imgui_draw.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="Source\ThirdParty\Imgui\imgui_impl_dx11.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="Source\ThirdParty\Imgui\imgui_impl_win32.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="Source\ThirdParty\Imgui\imgui_tables.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="Source\ThirdParty\Imgui\imgui_widgets.cpp">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Resources\MasterYi\MasterYi_HeadData.h" />
+    <ClInclude Include="Source\Editor\Application\FEditorApplication.h" />
+    <ClInclude Include="Source\Editor\Core\EditorConstant.h" />
+    <ClInclude Include="Source\Editor\Core\FConfigArchive.h" />
+    <ClInclude Include="Source\Editor\Core\FEditor.h" />
+    <ClInclude Include="Source\Editor\Core\FEditorState.h" />
+    <ClInclude Include="Source\Editor\EditorViewport\FEditorViewport.h" />
+    <ClInclude Include="Source\Editor\Gizmo\FGizmo.h" />
+    <ClInclude Include="Source\Editor\Grid\FGrid.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiConsoleWindow.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiContentsDrawer.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiControlPanelWindow.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiDragDrop.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiEditorViewportWindow.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiManager.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiOverlayStat.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiPreviewEditorWindow.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiPropertyWindow.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiStatFps.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiStatHelper.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiStatMemory.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiToolBar.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FImguiWorldOutliner.h" />
+    <ClInclude Include="Source\Editor\UI\Imgui\FimguiWorlOutliner.h" />
+    <ClInclude Include="Source\Editor\Visualizer\FBillboardVisualizer.h" />
+    <ClInclude Include="Source\Editor\Visualizer\FPrimitiveVisualizer.h" />
+    <ClInclude Include="Source\Editor\Visualizer\FSpotlightVisualizer.h" />
+    <ClInclude Include="Source\Editor\Visualizer\FTextVisualizer.h" />
+    <ClInclude Include="Source\Editor\Visualizer\FVisualizerRegistry.h" />
+    <ClInclude Include="Source\Editor\Visualizer\IVisualizer.h" />
+    <ClInclude Include="Source\Runtime\Actors\AActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\AAnimatedBillboardActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\ABillboardActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\ACubeActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\ACylinderActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\AInstancingActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\AMasterYi.h" />
+    <ClInclude Include="Source\Runtime\Actors\ASphereActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\ASpotlightActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\AStaticMeshActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\ATextRenderActor.h" />
+    <ClInclude Include="Source\Runtime\Actors\TestTextActor.h" />
+    <ClInclude Include="Source\Runtime\Core\FName.h" />
+    <ClInclude Include="Source\Runtime\Core\FNamePool.h" />
+    <ClInclude Include="Source\Runtime\Core\FObjectIterator.h" />
+    <ClInclude Include="Source\Runtime\Core\FStatRegistry.h" />
+    <ClInclude Include="Source\Runtime\Core\FString.h" />
+    <ClInclude Include="Source\Runtime\Core\IntTypes.h" />
+    <ClInclude Include="Source\Runtime\Core\Log.h" />
+    <ClInclude Include="Source\Runtime\Core\PointerTypes.h" />
+    <ClInclude Include="Source\Runtime\Core\TArray.h" />
+    <ClInclude Include="Source\Runtime\Core\TFunction.h" />
+    <ClInclude Include="Source\Runtime\Core\TMap.h" />
+    <ClInclude Include="Source\Runtime\Core\TObjectIterator.h" />
+    <ClInclude Include="Source\Runtime\Core\TSet.h" />
+    <ClInclude Include="Source\Runtime\Core\TSortedMap.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\FClassIdSet.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\FGarbageCollector.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\FReferenceCollector.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\FUObjectArray.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\TWeakObjectPtr.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UAnimatedBillboardComp.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UBillBoardComp.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UClass.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UConeComp.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UCubeComp.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UCylinderComp.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UInstancePrimitiveComponent.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UMeshComponent.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UObject.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UObjectGlobals.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UPlaneComp.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UPrimitiveComponent.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\USceneComponent.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\USphereComp.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\USpotLightComponent.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UStaticMesh.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UStaticMeshComponent.h" />
+    <ClInclude Include="Source\Runtime\CoreUObject\UTextInstanceComponent.h" />
+    <ClInclude Include="Source\Runtime\Engine\FArchive.h" />
+    <ClInclude Include="Source\Runtime\Engine\FCamera.h" />
+    <ClInclude Include="Source\Runtime\Engine\FCameraProjection.h" />
+    <ClInclude Include="Source\Runtime\Engine\FDelegate.h" />
+    <ClInclude Include="Source\Runtime\Engine\FRayCastingManager.h" />
+    <ClInclude Include="Source\Runtime\Engine\FRenderView.h" />
+    <ClInclude Include="Source\Runtime\Engine\FSceneView.h" />
+    <ClInclude Include="Source\Runtime\Engine\FTimeManager.h" />
+    <ClInclude Include="Source\Runtime\Engine\ShowFlags.h" />
+    <ClInclude Include="Source\Runtime\Engine\UScene.h" />
+    <ClInclude Include="Source\Runtime\Engine\USceneManager.h" />
+    <ClInclude Include="Source\Runtime\Geometry\FAxisAlignedBoundingBox.h" />
+    <ClInclude Include="Source\Runtime\Geometry\FTransform.h" />
+    <ClInclude Include="Source\Runtime\Geometry\Sphere.h" />
+    <ClInclude Include="Source\Runtime\Input\FCameraInputController.h" />
+    <ClInclude Include="Source\Runtime\Input\FInputManager.h" />
+    <ClInclude Include="Source\Runtime\Math\FMatrix.h" />
+    <ClInclude Include="Source\Runtime\Math\FQuaternion.h" />
+    <ClInclude Include="Source\Runtime\Math\FVector.h" />
+    <ClInclude Include="Source\Runtime\Math\FVector2.h" />
+    <ClInclude Include="Source\Runtime\Math\FVector4.h" />
+    <ClInclude Include="Source\Runtime\Math\Random.h" />
+    <ClInclude Include="Source\Runtime\Rendering\EBlendMode.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FBinArchive.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FFont.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FInstanceBatchKey.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FLineBatcher.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FMaterial.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FMesh.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FObjDecoder.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FPreviewRenderTarget.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FRenderer.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FRenderPipeline.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FRenderQueue.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FRenderResourceLibrary.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FTexture.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FWindowsBinReader.h" />
+    <ClInclude Include="Source\Runtime\Rendering\FWindowsBinWriter.h" />
+    <ClInclude Include="Source\Runtime\Rendering\ShaderConstants.h" />
+    <ClInclude Include="Source\Runtime\Rendering\Vertices.h" />
+    <ClInclude Include="Source\Runtime\Utility\EngineUtil.h" />
+    <ClInclude Include="Source\Runtime\Utility\WindowsUtil.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imconfig.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imgui.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imgui_impl_win32.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imgui_internal.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imstb_rectpack.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imstb_textedit.h" />
+    <ClInclude Include="Source\ThirdParty\Imgui\imstb_truetype.h" />
+    <ClInclude Include="Source\ThirdParty\Json\json.hpp" />
+    <ClInclude Include="Source\ThirdParty\Json\nlohmann\json.hpp" />
+    <ClInclude Include="Source\ThirdParty\mINI\ini.h" />
+    <ClInclude Include="Source\ThirdParty\stb\stb_image.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shader\ExamplePS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>MainPS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\ExampleVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>MainVS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\GridPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>MainPS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\GridVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>MainVS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\InstanceVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>MainVS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\MsdfTextPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>MainPS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\OutlinePostProcessPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\RotationGizmoPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\RotationGizmoVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\ScreenQuadVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\SpotlightPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>MainPS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\TextPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>MainPS</EntryPointName>
+    </FxCompile>
+    <FxCompile Include="Shader\TexturedPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>MainPS</EntryPointName>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shader\Constants.hlsli">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Source\ThirdParty\DirectXTK\DirectXTK_Desktop_2026.vcxproj">
+      <Project>{e0b52ae7-e160-4d32-bf3f-910b785e5a8e}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Runtime/Core/Log.h</ForcedIncludeFiles>
+      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|x64'">Runtime/Core/Log.h</ForcedIncludeFiles>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</MultiProcessorCompilation>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|Win32'">true</MultiProcessorCompilation>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Analysis|Win32'">true</MultiProcessorCompilation>
+      <MultiProcessorCompilation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</MultiProcessorCompilation>
+    </ClCompile>
+    <PreBuildEvent>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">call "$(ProjectDir)ConvertTextures.bat"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|x64'">call "$(ProjectDir)ConvertTextures.bat"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">call "$(ProjectDir)ConvertTextures.bat"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Convert Png to dds</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='ObjViewerDebug|x64'">Convert Png to dds</Message>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>if exist "$(SolutionDir)Resources\Textures" xcopy /Y /D /I /E "$(SolutionDir)Resources\Textures\" "$(OutDir)Textures\" &amp; if exist "$(SolutionDir)Resources\Edit" xcopy /Y /D /I /E "$(SolutionDir)Resources\Edit\" "$(OutDir)Edit\" &amp; if exist "$(SolutionDir)Resources\Textures\Fonts" xcopy /Y /D /I /E "$(SolutionDir)Resources\Textures\" "$(OutDir)Textures\" &amp; if exist "$(SolutionDir)Fonts" xcopy /Y /D /I /E "$(SolutionDir)Fonts\" "$(OutDir)Fonts\"
+xcopy /Y /D /I /E "$(ProjectDir)Resources" "$(OutDir)Resources"
+if errorlevel 1 exit /b 1</Command>
+      <Message>Copying resources to output directory...</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+</Project>
