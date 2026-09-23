@@ -6,6 +6,13 @@ Intermediate/
 .vs/
 *.vcxproj.user
 
+# Premake generated (premake5 vs2026 으로 재생성)
+# DirectXTK 등 ThirdParty 프로젝트 파일은 제외하면 안 되므로 루트만 무시
+/*.sln
+/*.slnx
+/*.vcxproj
+/*.vcxproj.filters
+
 # Dear ImGui
 imgui.ini
 
