@@ -20,7 +20,7 @@ public:
     const FName& GetMeshID() const override;
     FName GetMaterialID() const override;
     FAxisAlignedBoundingBox CalcLocalBounds() override;
-
+    void UpdateLocalBounds() override;
 
     TArray<FRenderData> GetRenderDatas(const FCamera& Camera) override;
     const FRenderData& GetPureRenderData() const override;

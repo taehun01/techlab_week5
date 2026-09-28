@@ -22,11 +22,11 @@ public:
     FTransform GetGlobalTransform() const;
 
     virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().ToMatrix(); }
+    FMatrix GetModelMatrix() const;
 
     // GetRenderMatrix가 카메라에 따라 달라지면 true (빌보드, 텍스트).
     // 트랜스폼만으로 월드 바운드를 정할 수 없어 공간 인덱스(옥트리)에서 제외된다.
     virtual bool IsCameraFacing() const { return false; }
-    FMatrix GetModelMatrix();
 
     // 직렬화
     virtual void Serialize(FArchive& Archive) const override;
@@ -35,6 +35,8 @@ public:
 
     // 충돌 판정용 바운드 계산
     virtual FAxisAlignedBoundingBox CalcLocalBounds();
+    virtual void UpdateLocalBounds();
+    const FAxisAlignedBoundingBox GetLocalBounds() const { return LocalBounds; }
 
     // 색상 설정 및 조회
     const FVector& GetColor() const { return Color; }
@@ -53,4 +55,6 @@ protected:
     FTransform RelativeTransform;
     FVector Color{1.0f, 1.0f, 1.0f};
     float ColorAmount = 0.0f;
+
+    FAxisAlignedBoundingBox LocalBounds;
 };

@@ -25,7 +25,8 @@ struct FImguiStatFps final
 		PosNDC.X += Length.X;
 		PosNDC.Y += Length.Y * 0.2f;
 
-		FVector2 PosPixel = PosNDC * STATS.GetWindowSize();
+		const ImVec2 DisplaySize = ImGui::GetIO().DisplaySize;
+		FVector2 PosPixel = PosNDC * FVector2(DisplaySize.x, DisplaySize.y);
 		PosPixel.X -= 100.f;
 
 		ImFont* Font = ImGui::GetFont();

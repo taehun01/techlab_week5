@@ -331,11 +331,17 @@ void FImguiConsoleWindow::ExecCommand(const char* command_line)
 		if (STATS.IsStatMemory()) STATS.OffStatMemory();
 		else STATS.OnStatMemory();
 	}
+	else if (Stricmp(command_line, "stat picking") == 0)
+	{
+		if (STATS.IsStatPicking()) STATS.OffStatPicking();
+		else STATS.OnStatPicking();
+	}
 	else if (Stricmp(command_line, "stat none") == 0)
 	{
 		STATS.OffStatFPS();
 		STATS.OffStatMemory();
 	}
+
 	else
 	{
 		UE_LOG("Unknown command: '%s'\n", command_line);

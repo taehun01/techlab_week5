@@ -12,6 +12,7 @@
 #include "ThirdParty/Imgui/imgui.h"
 #include "ThirdParty/Imgui/imgui_internal.h"
 #include <Runtime\CoreUObject\UMeshComponent.h>
+#include "Runtime/Core/FStatRegistry.h"
 #include <chrono>
 
 void FImguiEditorViewportWindow::Process(FEditor& Editor, float DeltaTime)
@@ -410,6 +411,7 @@ void FImguiEditorViewportWindow::UpdateSelection(FEditor &Editor,
 {
     if (Input.bPickRequested)
     {
+       
         HandlePicking(Editor, Viewport, Input.LocalMouse, Input.SizePixels);
     }
 }
@@ -584,6 +586,8 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
         return;
     }
 
+    STATS.AddNumAttempts();
+
     UMeshComponent* HitComponent = nullptr;
     FVector ImpactPoint;
 
@@ -594,6 +598,7 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
     auto ToMs = [](FClock::duration D) { return std::chrono::duration<double, std::milli>(D).count(); };
 
     bool bHit = false;
+    double PickMs = 0.0;
     const auto PickStart = FClock::now();
     if (Editor.bUseOctreePicking)
     {
@@ -604,10 +609,10 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
         // 옥트리로 후보를 좁히고 가까운 순으로 검사
         bHit = FRayCastingManager::RaycastScene(Ray, Viewport.ViewportCamera, Octree, HitComponent, ImpactPoint);
 
-        const double TotalMs = ToMs(FClock::now() - PickStart);
+        PickMs = ToMs(FClock::now() - PickStart);
         const double FlushMs = ToMs(FlushEnd - PickStart);
-        Editor.OctreePickingStat.Add(TotalMs, FlushMs);
-        UE_LOG("[Picking] Octree: %.3f ms (Flush %.3f ms + Query %.3f ms)", TotalMs, FlushMs, TotalMs - FlushMs);
+        Editor.OctreePickingStat.Add(PickMs, FlushMs);
+        UE_LOG("[Picking] Octree: %.3f ms (Flush %.3f ms + Query %.3f ms)", PickMs, FlushMs, PickMs - FlushMs);
     }
     else
     {
@@ -615,10 +620,14 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
         bHit = FRayCastingManager::RayIntersectsMeshes(Ray, Viewport.ViewportCamera,
             Scene->GetRenderComponents(), HitComponent, ImpactPoint);
 
-        const double TotalMs = ToMs(FClock::now() - PickStart);
-        Editor.BruteForcePickingStat.Add(TotalMs);
-        UE_LOG("[Picking] BruteForce: %.3f ms", TotalMs);
+        PickMs = ToMs(FClock::now() - PickStart);
+        Editor.BruteForcePickingStat.Add(PickMs);
+        UE_LOG("[Picking] BruteForce: %.3f ms", PickMs);
     }
+
+    // 뷰포트 오버레이 통계 (시도 횟수와 누적 시간이 맞도록 빗나간 클릭도 기록)
+    STATS.SetPickingTime(static_cast<float>(PickMs));
+    STATS.AddAccumulatedTime(static_cast<float>(PickMs));
 
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.
     if (!bHit || !HitComponent || !HitComponent->GetActorOwner())

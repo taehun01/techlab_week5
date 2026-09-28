@@ -9,6 +9,7 @@
 #include "Runtime/Engine/FSceneOctree.h"
 #include "Runtime/Core/Log.h"
 #include <Runtime\Core\TArray.h>
+#include "../Geometry/FAxisAlignedBoundingBox.h"
 
 constexpr float Epsilon = 0.000001f;
 
@@ -48,7 +49,9 @@ namespace
 	};
 
 	// 컴포넌트 하나를 삼각형 단위로 검사해 더 가까우면 갱신한다.
-	void TestComponent(const FRay& Ray, const FCamera& Camera, UMeshComponent* Component, FClosestHit& Closest)
+	// CullingFrustum이 주어지면 월드 바운드가 프러스텀 밖인 컴포넌트는 건너뛴다.
+	void TestComponent(const FRay& Ray, const FCamera& Camera, UMeshComponent* Component, FClosestHit& Closest,
+		const FFrustum* CullingFrustum = nullptr)
 	{
 		if (!Component)
 		{
@@ -62,6 +65,15 @@ namespace
 		}
 
 		const FMatrix World = Component->GetRenderMatrix(Camera);
+
+		if (CullingFrustum)
+		{
+			const FAxisAlignedBoundingBox WorldBounds = { Component->GetLocalBounds(), World };
+			if (!CullingFrustum->Intersects(WorldBounds))
+			{
+				return;
+			}
+		}
 
 		float HitDistance;
 		FVector ImpactPoint;
@@ -77,10 +89,13 @@ namespace
 
 bool FRayCastingManager::RayIntersectsMeshes(const FRay& Ray, const FCamera& Camera, const TArray<UMeshComponent*>& Components, UMeshComponent*& HitComponent, FVector& OutImpactPoint)
 {
+	// 전체 순회: 화면 밖 컴포넌트는 프러스텀으로 먼저 걸러낸다.
+	const FFrustum CullingFrustum = Camera.CreateFrustum();
+
 	FClosestHit Closest;
 	for (UMeshComponent* Component : Components)
 	{
-		TestComponent(Ray, Camera, Component, Closest);
+		TestComponent(Ray, Camera, Component, Closest, &CullingFrustum);
 	}
 
 	HitComponent = Closest.Component;

@@ -76,7 +76,7 @@ FTransform UPrimitiveComponent::GetGlobalTransform() const
     return RelativeTransform;
 }
 
-FMatrix UPrimitiveComponent::GetModelMatrix()
+FMatrix UPrimitiveComponent::GetModelMatrix() const
 {
     return GetGlobalTransform().ToMatrix();
 }
@@ -120,4 +120,8 @@ void UPrimitiveComponent::Deserialize(const FArchive& Archive)
 FAxisAlignedBoundingBox UPrimitiveComponent::CalcLocalBounds()
 {
     return {};
+}
+
+void UPrimitiveComponent::UpdateLocalBounds()
+{
 }
