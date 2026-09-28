@@ -10,9 +10,9 @@
 // 렌더링에 필요한 드로우 정보
 struct FRenderData
 {
-    FName MeshId{"None"};
-    FName MaterialId{"None"};
-    FName TextureId{ "None" };
+    FName MeshId;
+    FName MaterialId;
+    FName TextureId;
     FObjectConstants Constants;
     int32 startidx = 0;
     int32 indicesCount = -1;
