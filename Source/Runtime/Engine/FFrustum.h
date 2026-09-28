@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Math/FVector.h"
+#include "../Geometry/FAxisAlignedBoundingBox.h"
 
 struct FPlane
 {
@@ -9,11 +10,9 @@ struct FPlane
 
 	FPlane() = default;
 
-	FPlane(const FVector& InPoint, const FVector& InNormal)
-	{
-		Normal = InNormal / InNormal.Size();
-		Distance = Normal.Dot(InPoint);
-	}
+	FPlane(const FVector& InPoint, const FVector& InNormal);
+
+	[[nodiscard]] float GetSignedDistanceToPlane(const FVector& Point) const;
 };
 
 struct FFrustum
@@ -24,4 +23,7 @@ struct FFrustum
 	FPlane Right;
 	FPlane Near;
 	FPlane Far;
+
+	[[nodiscard]] bool Intersects(const FAxisAlignedBoundingBox& Box) const;
+	[[nodiscard]] bool BoxIsOnOrForwardPlane(const FVector& BoxCenter, const FVector& BoxExtents, const FPlane& Plane) const;
 };
