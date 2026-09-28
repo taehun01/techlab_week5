@@ -65,6 +65,7 @@ void FRenderer::BeginFrame() {
   Context->ClearRenderTargetView(EditorViewPortRTV.Get(), ClearColor);
   Context->ClearDepthStencilView(
       DepthStencilView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+  ResetRenderState();
 }
 
 void FRenderer::BindEditorViewportRenderTargets() {
@@ -688,7 +689,8 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
     SC.DisableShading =
         CurrentRenderMode == EViewModeIndex::VMI_Unlit ||
         BatchKey.MaterialID == FName("Instance_Simple") ? 1.0f : 0.0f;
-    UpdateBuffer(SC);
+    UpdateConstantBuffer(SC);
+    BindConstantBuffer();
 
     const UINT InstanceCount = static_cast<UINT>(InstanceData.size());
     const UINT RequiredSize = InstanceCount * sizeof(FInstanceData);
@@ -746,6 +748,7 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
       Context->DrawInstanced(Mesh->VertexCount, InstanceCount, 0, 0);
     }
   }
+  ResetRenderState();
 }
 
 void FRenderer::DrawTextInstances(const FCamera &Camera, const FName &MeshId,
@@ -755,7 +758,8 @@ void FRenderer::DrawTextInstances(const FCamera &Camera, const FName &MeshId,
   // 상수 버퍼 업데이트
   FObjectConstants SC{};
   SC.MVP = Camera.CreateViewProjectionMatrix();
-  UpdateBuffer(SC);
+  UpdateConstantBuffer(SC);
+  BindConstantBuffer();
 
   TArray<FInstanceData> InstanceData =
       FRenderResourceLibrary::Get().GetInstancingArray(MaterialId, MeshId);
@@ -866,6 +870,7 @@ void FRenderer::RenderOutline(FVector2 TopLeftUV, FVector2 LengthUV) {
 
   // 깊이버퍼 복구
   BindBackBufferWithDepth();
+  ResetRenderState();
 }
 
 void FRenderer::RenderMeshPreviewScene(FPreviewRenderTarget& RenderTarget, const FCamera& Camera, 
@@ -1072,4 +1077,3 @@ void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, c
     }
 
 }
-

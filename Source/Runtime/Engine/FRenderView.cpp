@@ -65,6 +65,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
 
         // 슬롯별 RenderData 순회 처리
+        if (RenderDatas.empty()) return;
         for (FRenderData Data : RenderDatas)
         {
             Data.bSelected = bSelected;
@@ -83,8 +84,8 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             Data.Constants.DisableShading = DisableShading;
 
             // 머티리얼의 블렌드 모드에 따라 불투명 및 반투명 패스 자동 분기
-            auto Material = ResLib.GetMaterial(Data.MaterialId);
-            if (Material && (Material->GetBlendMode() == EBlendMode::Additive || Material->GetBlendMode() == EBlendMode::Translucent))
+            CurrentMaterial = ResLib.GetMaterial(Data.MaterialId).get();
+            if (CurrentMaterial && (CurrentMaterial->GetBlendMode() == EBlendMode::Additive || CurrentMaterial->GetBlendMode() == EBlendMode::Translucent))
             {
                 RenderQueue.PushTranslucent(Data);
             }
@@ -359,17 +360,16 @@ void FRenderView::DrawRenderData(const FRenderData& Data)
 {
     auto& ResLib = FRenderResourceLibrary::Get();
     auto Mesh = ResLib.GetMesh(Data.MeshId);
-    auto Material = ResLib.GetMaterial(Data.MaterialId);
 
-    if (!Material)
+    if (!CurrentMaterial)
     {
-        Material = ResLib.GetMaterial(FName("Simple"));
+        CurrentMaterial = ResLib.GetMaterial(FName("Simple")).get();
     }
 
-    if (!Mesh || !Material) return;
+    if (!Mesh || !CurrentMaterial) return;
 
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
-    Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount);
+    Renderer.Draw(*Mesh, *CurrentMaterial, Data.Constants, Data.startidx, Data.indicesCount);
 }
 
 

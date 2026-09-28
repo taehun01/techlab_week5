@@ -311,14 +311,14 @@ void FEditorApplication::Render() {
 
 
     // 스태틱 메시 프리뷰 렌더링
-    for (const auto& Window : PreviewWindows)
-    {
-        if (Window && Window->IsOpen())
-        {
-            RenderView->RenderPreviewScene(Window->GetRenderTarget(), Window->GetPreviewViewport().ViewportCamera,
-                Window->GetTargetMesh(), Window->GetPreviewMaterial(), Window->PreviewWidth, Window->PreviewHeight, Window->bShowGrid, Window->prevType);
-        }
-    }
+    //for (const auto& Window : PreviewWindows)
+    //{
+    //    if (Window && Window->IsOpen())
+    //    {
+    //        RenderView->RenderPreviewScene(Window->GetRenderTarget(), Window->GetPreviewViewport().ViewportCamera,
+    //            Window->GetTargetMesh(), Window->GetPreviewMaterial(), Window->PreviewWidth, Window->PreviewHeight, Window->bShowGrid, Window->prevType);
+    //    }
+    //}
 
     RenderView->GetRenderer().BindBackBufferWithDepth();
     ImguiManager.RenderUI();
