@@ -10,6 +10,7 @@
 #include "ThirdParty/Imgui/imgui.h"
 #include "ThirdParty/Imgui/imgui_internal.h"
 #include <Runtime\CoreUObject\UMeshComponent.h>
+#include "Runtime/Core/FStatRegistry.h"
 
 void FImguiEditorViewportWindow::Process(FEditor& Editor, float DeltaTime)
 {
@@ -407,6 +408,7 @@ void FImguiEditorViewportWindow::UpdateSelection(FEditor &Editor,
 {
     if (Input.bPickRequested)
     {
+       
         HandlePicking(Editor, Viewport, Input.LocalMouse, Input.SizePixels);
     }
 }
@@ -574,10 +576,16 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
         }
     }
 
+
+    STATS.AddNumAttempts();
     TArray<UMeshComponent*> Components = Editor.GetMeshComponents();
 
     UMeshComponent* HitComponent = nullptr;
     FVector ImpactPoint;
+
+    LARGE_INTEGER PickingStartTime;
+    QueryPerformanceCounter(&PickingStartTime);
+
 
     const bool bHit = FRayCastingManager::RayIntersectsMeshes(
         FRayCastingManager::CreateRayFromScreenPosition(
@@ -585,12 +593,22 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
             Viewport.ViewportCamera,
         Components, HitComponent, ImpactPoint);
 
+
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.
     if (!bHit || !HitComponent || !HitComponent->GetActorOwner())
     {
         Editor.UnSelectActor();
         return;
     }
+
+    LARGE_INTEGER PickingEndTime;
+    QueryPerformanceCounter(&PickingEndTime);
+    const float ElapsedMs = static_cast<float>(
+        static_cast<double>(PickingEndTime.QuadPart - PickingStartTime.QuadPart) * 1000.0
+        / static_cast<double>(STATS.GetFrequency().QuadPart));
+
+    STATS.SetPickingTime(ElapsedMs);
+    STATS.AddAccumulatedTime(ElapsedMs);
 
     AActor *OwnerActor = HitComponent->GetActorOwner();
     Editor.SelectActor(OwnerActor);
