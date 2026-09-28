@@ -65,6 +65,7 @@ bool FRayCastingManager::RayIntersectsMeshes(const FRay& Ray, const FCamera& Cam
 		if (RayIntersectsMesh(Ray, *Mesh, World, HitDistance, ImpactPoint) &&
 			HitDistance < ClosestHit)
 		{
+
 			ClosestHit = HitDistance;
 			ClosestComponent = Component;
 			ClosestImpactPoint = ImpactPoint;
