@@ -418,15 +418,22 @@ void FImguiPropertyWindow::ShowTransform(FEditor& Editor, USceneComponent& Comp,
 	// 서브 컴포넌트 상대 트랜스폼 편집
 	if (auto* PrimComp = Comp.Cast<UPrimitiveComponent>())
 	{
-		FTransform& RelTransform = PrimComp->GetRelativeTransform();
-		ImGui::DragFloat3("Rel Location", &RelTransform.Location.X, 0.01f);
+		// 복사본을 편집한 뒤 SetRelativeTransform으로 반영 (옥트리 바운드 갱신 포함)
+		FTransform RelTransform = PrimComp->GetRelativeTransform();
+		bool bChanged = ImGui::DragFloat3("Rel Location", &RelTransform.Location.X, 0.01f);
 
 		FVector RelEuler = RelTransform.Rotation.ToEulerXYZDeg();
 		if (ImGui::DragFloat3("Rel Rotation (deg)", &RelEuler.X, 0.5f))
 		{
 			RelTransform.Rotation = FQuaternion::FromEulerXYZDeg(RelEuler);
+			bChanged = true;
 		}
-		ImGui::DragFloat3("Rel Scale", &RelTransform.Scale3D.X, 0.01f);
+		bChanged |= ImGui::DragFloat3("Rel Scale", &RelTransform.Scale3D.X, 0.01f);
+
+		if (bChanged)
+		{
+			PrimComp->SetRelativeTransform(RelTransform);
+		}
 	}
 }
 

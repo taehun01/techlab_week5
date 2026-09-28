@@ -36,7 +36,61 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Separator();
     //전역조명
     DirectionLightSetting(Editor);
+    ImGui::Separator();
+    // 피킹 방식 선택 및 성능 비교
+    PickingSetting(Editor);
     ImGui::End();
+}
+
+void FImguiControlPanelWindow::PickingSetting(FEditor& Editor)
+{
+    ImGui::Text("Picking");
+    ImGui::Checkbox("Use Octree Picking", &Editor.bUseOctreePicking);
+
+    // 시간은 Flush(옥트리 갱신 반영)를 포함한 총시간. Flush 열은 그중 갱신이 차지한 몫.
+    if (ImGui::BeginTable("PickingStats", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+    {
+        ImGui::TableSetupColumn("Method");
+        ImGui::TableSetupColumn("Last (ms)");
+        ImGui::TableSetupColumn("Avg (ms)");
+        ImGui::TableSetupColumn("Last Flush");
+        ImGui::TableSetupColumn("Avg Flush");
+        ImGui::TableSetupColumn("Count");
+        ImGui::TableHeadersRow();
+
+        auto Row = [](const char* Name, const FEditor::FPickingStat& Stat, bool bActive, bool bHasFlush)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            if (bActive)
+            {
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", Name);
+            }
+            else
+            {
+                ImGui::TextUnformatted(Name);
+            }
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%.3f", Stat.LastMs);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%.3f", Stat.GetAverageMs());
+            ImGui::TableSetColumnIndex(3);
+            if (bHasFlush) ImGui::Text("%.3f", Stat.LastFlushMs); else ImGui::TextDisabled("-");
+            ImGui::TableSetColumnIndex(4);
+            if (bHasFlush) ImGui::Text("%.3f", Stat.GetAverageFlushMs()); else ImGui::TextDisabled("-");
+            ImGui::TableSetColumnIndex(5);
+            ImGui::Text("%d", Stat.Count);
+        };
+        Row("Octree", Editor.OctreePickingStat, Editor.bUseOctreePicking, true);
+        Row("Brute Force", Editor.BruteForcePickingStat, !Editor.bUseOctreePicking, false);
+        ImGui::EndTable();
+    }
+
+    if (ImGui::Button("Reset Picking Stats"))
+    {
+        Editor.OctreePickingStat.Reset();
+        Editor.BruteForcePickingStat.Reset();
+    }
 }
 
 void FImguiControlPanelWindow::ActorSpawnSetting(FEditor& Editor)

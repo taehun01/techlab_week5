@@ -17,6 +17,7 @@ private:
 	void GridSetting(FEditor& Editor);
 	void RenderModeAndShowFlagSetting(FEditor& Editor);
 	void CameraSetting(FEditor& Editor);
+	void PickingSetting(FEditor& Editor);
 	//TODO : Directional light또한 Actor가 되어야하므로 지워야함
 	void DirectionLightSetting(FEditor& Editor);
 

@@ -66,6 +66,12 @@ void FEditor::Process() {
     SelectedActor->SetTransform(SelectedTransform);
   }
 
+  // 이번 프레임의 트랜스폼/메시 변경이 모두 끝났으므로 옥트리에 반영한다.
+  // 클릭 시점에는 반영할 것이 남지 않아 피킹 지연에 갱신 비용이 섞이지 않는다.
+  if (SceneManager && SceneManager->CurrentScene) {
+    SceneManager->CurrentScene->FlushSceneOctree();
+  }
+
   SaveState();
   State.Tick(FTimeManager::Get().GetDeltaTime());
 

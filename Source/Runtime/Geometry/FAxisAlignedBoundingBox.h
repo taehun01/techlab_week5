@@ -26,5 +26,9 @@ struct FAxisAlignedBoundingBox
 
 	FAxisAlignedBoundingBox() = default;
 	FAxisAlignedBoundingBox(const FStaticMesh& Mesh);
-	FAxisAlignedBoundingBox(const FStaticMesh& Mesh, const FMatrix& ModelMatrix);	
+	FAxisAlignedBoundingBox(const FStaticMesh& Mesh, const FMatrix& ModelMatrix);
+	FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& LocalBox, const FMatrix& ModelMatrix);
+
+	[[nodiscard]] FVector GetCenter() const;
+	[[nodiscard]] FVector GetExtents() const;
 };

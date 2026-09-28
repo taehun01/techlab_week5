@@ -37,6 +37,10 @@ void UPrimitiveComponent::Unregister()
 void UPrimitiveComponent::SetRelativeTransform(const FTransform& InRelativeTransform)
 {
     RelativeTransform = InRelativeTransform;
+    if (Scene)
+    {
+        Scene->MarkBoundsDirty(this);
+    }
 }
 
 FTransform UPrimitiveComponent::GetGlobalTransform() const
@@ -72,7 +76,7 @@ FTransform UPrimitiveComponent::GetGlobalTransform() const
     return RelativeTransform;
 }
 
-FMatrix UPrimitiveComponent::GetModelMatrix()
+FMatrix UPrimitiveComponent::GetModelMatrix() const
 {
     return GetGlobalTransform().ToMatrix();
 }
@@ -103,6 +107,12 @@ void UPrimitiveComponent::Deserialize(const FArchive& Archive)
 
     RelativeTransform.Scale3D = Archive.GetVector("Scale");
     Color = Archive.GetVector("Color");
+
+    // 씬에 등록된 뒤 역직렬화되는 경우(UScene::Deserialize) 옥트리 바운드를 갱신
+    if (Scene)
+    {
+        Scene->MarkBoundsDirty(this);
+    }
 }
 
 
@@ -110,4 +120,8 @@ void UPrimitiveComponent::Deserialize(const FArchive& Archive)
 FAxisAlignedBoundingBox UPrimitiveComponent::CalcLocalBounds()
 {
     return {};
+}
+
+void UPrimitiveComponent::UpdateLocalBounds()
+{
 }

@@ -11,6 +11,9 @@ public:
     void Register(UScene& InScene) override;
     void Unregister() override;
 
+    // MeshId로 등록된 메시의 로컬 바운드 (빌보드, 텍스트 등 UStaticMesh가 없는 컴포넌트용)
+    FAxisAlignedBoundingBox CalcLocalBounds() override;
+
     // FRenderData 조회
     virtual TArray<FRenderData> GetRenderDatas(const FCamera& Camera) { 
         return RenderDatas;

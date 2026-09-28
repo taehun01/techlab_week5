@@ -37,10 +37,16 @@ private:
 	uint32 MeshThumbnailCount = 0;
 	uint32 FontCount = 0;
 
+	//Picking
+	float PickingTime = 0.0f;
+	float AccumulatedTime = 0.0f;
+	int NumAttempts = 0;
+
 	PROCESS_MEMORY_COUNTERS Pmc{};
 
 	bool bShowFps = true;
 	bool bShowMemory = false;
+	bool bShowPicking = true;
 
 	FStatRegistry() = default;
 	~FStatRegistry() = default;
@@ -105,6 +111,9 @@ public:
 	bool IsStatMemory() { return bShowMemory; }
 	void OnStatMemory() { bShowMemory = true; }
 	void OffStatMemory() { bShowMemory = false; }
+	bool IsStatPicking() { return bShowPicking; }
+	void OnStatPicking() { bShowPicking = true; }
+	void OffStatPicking() { bShowPicking = false; }
 
 	uint32 GetAllocationBytes(){ return static_cast<uint32>(UObject::GetTotalAllocationBytes()); }
 	uint32 GetAllocationCount(){ return static_cast<uint32>(UObject::GetTotalAllocationCount()); }
@@ -142,6 +151,7 @@ public:
 	uint32 GetDrawTriangleCount() { return DrawIndexCount / 3; }
 	uint32 GetDrawVertexCount() { return DrawVertexCount; }
 
+	//TODO: STAT의 책임에 맞지않음 제거대상
 	void UpdateWindowSize(FVector2 InWindowSize) { WindowSize = InWindowSize; }
 	FVector2 GetWindowSize() { return WindowSize; }
 
@@ -167,4 +177,12 @@ public:
 	uint32 GetEditorTextureCount() { return EditorTextureCount; }
 	uint32 GetMeshThumbnailCount() { return MeshThumbnailCount; }
 	uint32 GetFontCount() { return FontCount; }
+
+	//Picking
+	float GetPickingTime() { return PickingTime;}
+	float GetAccumulatedTime() { return AccumulatedTime;}
+	int  GetNumAttempts() { return NumAttempts;}
+	void SetPickingTime(float InPickingTime) { PickingTime = InPickingTime;}
+	void AddNumAttempts() { ++NumAttempts;};
+	void AddAccumulatedTime(float InElapsedMs) { AccumulatedTime += InElapsedMs; }
 };

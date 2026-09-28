@@ -2,6 +2,7 @@
 #include "Runtime/CoreUObject/UObjectGlobals.h"
 #include "UClass.h"
 #include "Runtime/Engine/UScene.h"
+#include "Runtime/Rendering/FRenderResourceLibrary.h"
 
 IMPLEMENT_UCLASS(UMeshComponent, UPrimitiveComponent)
 
@@ -31,6 +32,20 @@ void UMeshComponent::Unregister()
         Scene->RemoveRenderComponent(this);
     }
     Super::Unregister();
+}
+
+FAxisAlignedBoundingBox UMeshComponent::CalcLocalBounds()
+{
+    if (RenderDatas.empty())
+    {
+        return Super::CalcLocalBounds();
+    }
+
+    if (const TSharedPtr<FStaticMesh> Mesh = FRenderResourceLibrary::Get().GetMesh(GetMeshID()))
+    {
+        return Mesh->GetLocalBounds();
+    }
+    return Super::CalcLocalBounds();
 }
 
 bool UMeshComponent::SetTextureByName(const FName& InTextureName)

@@ -16,7 +16,10 @@ class FNamePool
 	static TArray<TArray<FString>>& GetComparisonTable();
 	static TArray<TArray<FString>>& GetDisplayTable();
 
-	static FNameEntry AddEntry(const FString& Item);
+	
 	static const FString& GetComparisonString(const FNameEntry& Entry);
 	static const FString& GetDisplayString(const FNameEntry& Entry);
+
+public:
+	static FNameEntry AddEntry(const FString& Item);
 };

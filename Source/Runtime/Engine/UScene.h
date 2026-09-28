@@ -7,6 +7,7 @@
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/CoreUObject/UMeshComponent.h"
 #include "Runtime/CoreUObject/USceneComponent.h"
+#include "Runtime/Engine/FSceneOctree.h"
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
 #include <concepts>
 #include <type_traits>
@@ -92,6 +93,17 @@ public:
 
   void AddRenderComponent(UMeshComponent *mesh);
   void RemoveRenderComponent(UMeshComponent *mesh);
+
+  // 트랜스폼이나 메시가 바뀐 컴포넌트의 옥트리 바운드 갱신을 예약한다.
+  // 부모가 움직이면 자식도 움직이므로 같은 액터의 메시 컴포넌트를 모두 표시한다.
+  void MarkBoundsDirty(USceneComponent* Component);
+
+  // 예약된 옥트리 갱신을 반영한다. 트랜스폼 변경이 끝난 프레임 끝에서 호출한다.
+  void FlushSceneOctree() { SceneOctree.Flush(); }
+
+  // 공간 조회용 옥트리. 예약된 갱신을 반영한 뒤 반환한다 (프레임 중간에 바뀐 것에 대한 안전장치).
+  [[nodiscard]] FSceneOctree& GetSceneOctree();
+
   void RemoveActor(AActor* Actor);
 
   void DestroyActor(AActor* Actor);
@@ -102,6 +114,9 @@ private:
   TArray<AActor*> Actors;                        // 액터 목록 (Update용)
   TArray<UMeshComponent*> RenderComponents;      // 렌더링큐 (Draw용)
   TMap<UMeshComponent*, size_t> RenderIndices;
+
+  // 루트 밖의 요소도 루트 노드에 저장되므로 정확성에는 영향이 없고 효율만 떨어진다.
+  FSceneOctree SceneOctree{ FVector(0.0f, 0.0f, 0.0f), 64.0f };
 
   FRenderResourceLibrary* RenderResourceLibrary = nullptr;
   bool bInitialized = false;

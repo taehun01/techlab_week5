@@ -17,6 +17,7 @@
 #include "Runtime/Rendering/FPreviewRenderTarget.h"
 #include "Runtime/CoreUObject/UStaticMesh.h"
 #include "Runtime/Engine/UScene.h"
+#include "FFrustum.h"
 
 #include <fstream>
 
@@ -26,9 +27,22 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 {
     auto& ResLib = FRenderResourceLibrary::Get();
 
+    FFrustum CullingFrustum = View.Camera->CreateFrustum();
+
+    int CulledObjects = 0;
+
     for (auto& MeshComponent : Scene.GetRenderComponents())
     {
         if (!MeshComponent) continue;
+
+        const FMatrix World = MeshComponent->GetRenderMatrix(*View.Camera);
+        FAxisAlignedBoundingBox WorldBounds(MeshComponent->GetLocalBounds(), World);
+
+        if (!CullingFrustum.Intersects(WorldBounds))
+        {
+            CulledObjects++;
+            continue;
+        }
 
         // 쇼 플래그 확인
         if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(MeshComponent->GetShowFlag())) == 0)
@@ -48,7 +62,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         if (RenderDatas.empty()) continue;
 
         // 공통 Matrix 및 Color 계산 (루프 밖 1회 수행)
-        const FMatrix World = MeshComponent->GetRenderMatrix(*View.Camera);
         const FMatrix MVP = World * View.ViewProj;
 
         FVector FinalColorOverride = MeshComponent->GetColor();
