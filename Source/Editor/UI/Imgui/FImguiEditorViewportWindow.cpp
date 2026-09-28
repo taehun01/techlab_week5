@@ -574,16 +574,21 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
         }
     }
 
-    TArray<UMeshComponent*> Components = Editor.GetMeshComponents();
+    UScene *Scene = Editor.GetCurrentScene();
+    if (!Scene)
+    {
+        Editor.UnSelectActor();
+        return;
+    }
 
     UMeshComponent* HitComponent = nullptr;
     FVector ImpactPoint;
 
-    const bool bHit = FRayCastingManager::RayIntersectsMeshes(
+    // 옥트리로 후보를 좁히고 가까운 순으로 검사 (GetSceneOctree가 예약된 갱신을 먼저 반영)
+    const bool bHit = FRayCastingManager::RaycastScene(
         FRayCastingManager::CreateRayFromScreenPosition(
             Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels),
-            Viewport.ViewportCamera,
-        Components, HitComponent, ImpactPoint);
+        Viewport.ViewportCamera, Scene->GetSceneOctree(), HitComponent, ImpactPoint);
 
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.
     if (!bHit || !HitComponent || !HitComponent->GetActorOwner())

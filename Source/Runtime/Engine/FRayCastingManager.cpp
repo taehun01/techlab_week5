@@ -6,6 +6,7 @@
 #include <limits>
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/CoreUObject/UMeshComponent.h"
+#include "Runtime/Engine/FSceneOctree.h"
 #include "Runtime/Core/Log.h"
 #include <Runtime\Core\TArray.h>
 
@@ -37,44 +38,84 @@ FRay FRayCastingManager::CreateRayFromScreenPosition(const FCamera& Camera, cons
 	return Ray;
 }
 
-bool FRayCastingManager::RayIntersectsMeshes(const FRay& Ray, const FCamera& Camera, const TArray<UMeshComponent*>& Components, UMeshComponent*& HitComponent, FVector& OutImpactPoint)
+namespace
 {
-	HitComponent = nullptr;
+	struct FClosestHit
+	{
+		float Distance = (std::numeric_limits<float>::max)();
+		UMeshComponent* Component = nullptr;
+		FVector ImpactPoint;
+	};
 
-	float ClosestHit = (std::numeric_limits<float>::max)();
-	UMeshComponent* ClosestComponent = nullptr;
-	FVector ClosestImpactPoint;
-
-	for (UMeshComponent* Component : Components)
+	// 컴포넌트 하나를 삼각형 단위로 검사해 더 가까우면 갱신한다.
+	void TestComponent(const FRay& Ray, const FCamera& Camera, UMeshComponent* Component, FClosestHit& Closest)
 	{
 		if (!Component)
 		{
-			continue;
+			return;
 		}
 
 		auto Mesh = FRenderResourceLibrary::Get().GetMesh(Component->GetPureRenderData().MeshId);
 		if (!Mesh)
 		{
-			continue;
+			return;
 		}
 
-		FMatrix World = Component->GetRenderMatrix(Camera);
+		const FMatrix World = Component->GetRenderMatrix(Camera);
 
 		float HitDistance;
 		FVector ImpactPoint;
-		if (RayIntersectsMesh(Ray, *Mesh, World, HitDistance, ImpactPoint) &&
-			HitDistance < ClosestHit)
+		if (FRayCastingManager::RayIntersectsMesh(Ray, *Mesh, World, HitDistance, ImpactPoint) &&
+			HitDistance < Closest.Distance)
 		{
-			ClosestHit = HitDistance;
-			ClosestComponent = Component;
-			ClosestImpactPoint = ImpactPoint;
+			Closest.Distance = HitDistance;
+			Closest.Component = Component;
+			Closest.ImpactPoint = ImpactPoint;
 		}
 	}
+}
 
-	HitComponent = ClosestComponent;
-	OutImpactPoint = ClosestImpactPoint;
+bool FRayCastingManager::RayIntersectsMeshes(const FRay& Ray, const FCamera& Camera, const TArray<UMeshComponent*>& Components, UMeshComponent*& HitComponent, FVector& OutImpactPoint)
+{
+	FClosestHit Closest;
+	for (UMeshComponent* Component : Components)
+	{
+		TestComponent(Ray, Camera, Component, Closest);
+	}
 
-	return ClosestComponent != nullptr;
+	HitComponent = Closest.Component;
+	OutImpactPoint = Closest.ImpactPoint;
+	return Closest.Component != nullptr;
+}
+
+bool FRayCastingManager::RaycastScene(const FRay& Ray, const FCamera& Camera, const FSceneOctree& Octree, UMeshComponent*& HitComponent, FVector& OutImpactPoint)
+{
+	FClosestHit Closest;
+
+	// 1) 옥트리 밖의 카메라 지향 컴포넌트 (개수가 적어 전부 검사)
+	for (UMeshComponent* Component : Octree.GetCameraFacingComponents())
+	{
+		TestComponent(Ray, Camera, Component, Closest);
+	}
+
+	// 2) 옥트리 후보를 AABB 진입 거리 오름차순으로 검사
+	TArray<FSceneRayCandidate> Candidates;
+	Octree.RaycastCandidates(Ray, Candidates);
+
+	for (const FSceneRayCandidate& Candidate : Candidates)
+	{
+		// 메시의 삼각형은 모두 자기 AABB 안에 있으므로 충돌 거리 >= TNear.
+		// 이후 후보는 TNear가 더 크므로 지금 찾은 충돌보다 가까울 수 없다.
+		if (Candidate.TNear > Closest.Distance)
+		{
+			break;
+		}
+		TestComponent(Ray, Camera, Candidate.Component, Closest);
+	}
+
+	HitComponent = Closest.Component;
+	OutImpactPoint = Closest.ImpactPoint;
+	return Closest.Component != nullptr;
 }
 
 

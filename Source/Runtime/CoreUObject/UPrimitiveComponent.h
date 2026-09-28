@@ -22,6 +22,10 @@ public:
     FTransform GetGlobalTransform() const;
 
     virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().ToMatrix(); }
+
+    // GetRenderMatrix가 카메라에 따라 달라지면 true (빌보드, 텍스트).
+    // 트랜스폼만으로 월드 바운드를 정할 수 없어 공간 인덱스(옥트리)에서 제외된다.
+    virtual bool IsCameraFacing() const { return false; }
     FMatrix GetModelMatrix();
 
     // 직렬화

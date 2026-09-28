@@ -39,6 +39,7 @@ void UScene::Release() {
   }
 
   RenderComponents.clear();
+  SceneOctree.Clear();
   RenderResourceLibrary = nullptr;
   bInitialized = false;
 
@@ -184,11 +185,39 @@ void UScene::AddRenderComponent(UMeshComponent *mesh) {
   if (std::find(RenderComponents.begin(), RenderComponents.end(), mesh) ==
       RenderComponents.end()) {
     RenderComponents.push_back(mesh);
+    SceneOctree.Register(mesh);
   }
 }
 
 void UScene::RemoveRenderComponent(UMeshComponent *mesh) {
-  std::erase(RenderComponents, mesh);
+  if (std::erase(RenderComponents, mesh) > 0) {
+    SceneOctree.Unregister(mesh);
+  }
+}
+
+void UScene::MarkBoundsDirty(USceneComponent *Component) {
+  if (Component == nullptr)
+    return;
+
+  AActor *Actor = Component->GetActorOwner();
+  if (Actor == nullptr) {
+    if (auto *Mesh = Component->Cast<UMeshComponent>()) {
+      SceneOctree.MarkDirty(Mesh);
+    }
+    return;
+  }
+
+  for (USceneComponent *Attached : Actor->GetAttachedComponents()) {
+    auto *Mesh = Attached ? Attached->Cast<UMeshComponent>() : nullptr;
+    if (Mesh && Mesh->IsRegistered()) {
+      SceneOctree.MarkDirty(Mesh);
+    }
+  }
+}
+
+FSceneOctree &UScene::GetSceneOctree() {
+  SceneOctree.Flush();
+  return SceneOctree;
 }
 
 void UScene::RemoveActor(AActor *Actor) { std::erase(Actors, Actor); }

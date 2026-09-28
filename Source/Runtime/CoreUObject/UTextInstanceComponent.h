@@ -26,6 +26,7 @@ public:
 
   // Object -> World 변환 행렬 생성
   virtual FMatrix GetRenderMatrix(const FCamera &Camera) const override;
+  bool IsCameraFacing() const override { return true; }
 
 
   TArray<FRenderData> GetRenderDatas(const FCamera& Camera) override;

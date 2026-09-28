@@ -1,6 +1,7 @@
 #include "UStaticMeshComponent.h"
 #include "Runtime/CoreUObject/UObjectGlobals.h"
 #include "Runtime/Engine/FArchive.h"
+#include "Runtime/Engine/UScene.h"
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
 #include "Runtime/Core/Log.h"
 #include "UClass.h"
@@ -19,9 +20,11 @@ void UStaticMeshComponent::Initialize()
 bool UStaticMeshComponent::SetStaticMesh(UStaticMesh* InStaticMesh)
 {
     StaticMesh = InStaticMesh;
-    if (StaticMesh)
+
+    // 메시가 바뀌면 로컬 바운드도 바뀌므로 옥트리 갱신 예약
+    if (Scene)
     {
-        CalcLocalBounds();
+        Scene->MarkBoundsDirty(this);
     }
     return true;
 }
