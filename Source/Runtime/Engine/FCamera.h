@@ -1,5 +1,6 @@
 #pragma once
 
+#include "FFrustum.h"
 #include "FCameraProjection.h"
 #include "Runtime/Math/FVector.h"
 #include "Runtime/Math/FMatrix.h"
@@ -17,6 +18,7 @@ struct FCamera
 	[[nodiscard]] FMatrix GetViewMatrix() const;
 	[[nodiscard]] FMatrix GetProjectionMatrix() const;
 
+	[[nodiscard]] FFrustum CreateFrustum() const;
 
 	// Move(), Rotate(), Zoom() 등 추가 가능
 };
