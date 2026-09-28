@@ -22,8 +22,8 @@ struct FOctreeSettings
 
 struct FOctreeRayHit
 {
-	int32 NodeIndex = -1;
-	float T = -1.0f;
+	int32 ObjectIndex = -1;
+	float TNear = -1.0f;
 };
 
 class FOctree
