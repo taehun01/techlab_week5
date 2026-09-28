@@ -19,6 +19,7 @@
 #include <d3dcompiler.h>
 #include <objbase.h>
 #include "Runtime/Rendering/FObjDecoder.h"
+#include "Runtime/Actors/AStaticMeshActor.h"
 
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg,
@@ -78,6 +79,34 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
 
   SceneManager.SetScene(NewObject<UScene>());
+
+  // 사과 50만개 테스트용 코드
+  UStaticMesh* RedAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("apple_mid");
+  UStaticMesh* YellowAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("bitten_apple_mid");
+
+  const float Spacing = 1.f;
+
+  for (uint32 i = 0; i < 50; ++i)
+  {
+      for (uint32 j = 0; j < 50; ++j)
+      {
+          for (uint32 k = 0; k < 20; ++k)
+          {
+              FVector Location(i* Spacing, j* Spacing, k* Spacing);
+              FVector Scale(1.f, 1.f, 1.f);
+              AStaticMeshActor* NewApple = SceneManager.CurrentScene->SpawnActor<AStaticMeshActor>(Location, Scale);
+              if (i % 2 == 0)
+              {
+                  NewApple->SetStaticMesh(RedAppleMesh);
+              }
+              else
+              {
+                  NewApple->SetStaticMesh(YellowAppleMesh);
+              }
+              
+          }
+      }
+  }
 
   FEditorApplication &EditorApp = FEditorApplication::Get();
   {

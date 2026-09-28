@@ -39,7 +39,7 @@ private:
 
 	PROCESS_MEMORY_COUNTERS Pmc{};
 
-	bool bShowFps = false;
+	bool bShowFps = true;
 	bool bShowMemory = false;
 
 	FStatRegistry() = default;
