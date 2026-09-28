@@ -4,17 +4,12 @@
 #include "Runtime/Core/TArray.h"
 #include "Runtime/Math/FVector2.h"
 #include "Runtime/Engine/FCamera.h"
+#include "Runtime/Geometry/FRay.h"
 
 
 class UMeshComponent;
 class FStaticMesh;
 struct FAxisAlignedBoundingBox;
-
-struct FRay
-{
-	FVector Origin;
-	FVector Direction;
-};
 
 namespace FRayCastingManager
 {

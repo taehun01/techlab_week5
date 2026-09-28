@@ -83,40 +83,7 @@ bool FRayCastingManager::RayIntersectsMeshes(const FRay& Ray, const FCamera& Cam
 bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBoundingBox& AABB)
 {
 	float TNear = 0.0f;
-	float TFar = (std::numeric_limits<float>::max)();
-
-	for (int i = 0; i < 3; ++i)
-	{
-		// 광선이 축과 평행한 경우
-		if (std::abs(Ray.Direction[i]) < Epsilon)
-		{
-			// 시작점이 상자 범위 밖이면 제외
-			if (Ray.Origin[i] < AABB.Min[i] || Ray.Origin[i] > AABB.Max[i])
-			{
-				return false;
-			}
-			continue;
-		}
-
-		// 교점 거리 계산
-		float T0 = (AABB.Min[i] - Ray.Origin[i]) / Ray.Direction[i];
-		float T1 = (AABB.Max[i] - Ray.Origin[i]) / Ray.Direction[i];
-
-		if (T0 > T1)
-		{
-			std::swap(T0, T1);
-		}
-
-		TNear = std::max(TNear, T0);
-		TFar = std::min(TFar, T1);
-
-		if (TNear > TFar)
-		{
-			return false;
-		}
-	}
-
-	return true;
+	return IntersectRayAABB(Ray, AABB, TNear);
 }
 
 bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FStaticMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint)
