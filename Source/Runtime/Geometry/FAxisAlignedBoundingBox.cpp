@@ -30,3 +30,13 @@ FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FStaticMesh& Mesh, const 
 		}
 	}
 }
+
+FVector FAxisAlignedBoundingBox::GetCenter() const
+{
+	return (Min + Max) * 0.5f;
+}
+
+FVector FAxisAlignedBoundingBox::GetExtents() const
+{
+	return (Max - Min) * 0.5f;
+}
