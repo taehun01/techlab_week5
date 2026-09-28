@@ -21,7 +21,7 @@ bool UStaticMeshComponent::SetStaticMesh(UStaticMesh* InStaticMesh)
     StaticMesh = InStaticMesh;
     if (StaticMesh)
     {
-        CalcLocalBounds();
+        UpdateLocalBounds();
     }
     return true;
 }
@@ -47,6 +47,14 @@ FAxisAlignedBoundingBox UStaticMeshComponent::CalcLocalBounds()
         return StaticMesh->GetBounds();
     }
     return Super::CalcLocalBounds();
+}
+
+void UStaticMeshComponent::UpdateLocalBounds()
+{
+    if (StaticMesh)
+    {
+        LocalBounds = StaticMesh->GetBounds();
+    }
 }
 
 // UV 스크롤은 프레임당 한 번만 갱신한다. GetRenderDatas는 뷰포트·섹션마다 호출되므로 여기서 누적하면 안 된다.

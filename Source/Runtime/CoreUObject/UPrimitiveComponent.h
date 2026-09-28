@@ -22,7 +22,7 @@ public:
     FTransform GetGlobalTransform() const;
 
     virtual FMatrix GetRenderMatrix(const FCamera& Camera) const { return GetGlobalTransform().ToMatrix(); }
-    FMatrix GetModelMatrix();
+    FMatrix GetModelMatrix() const;
 
     // 직렬화
     virtual void Serialize(FArchive& Archive) const override;
@@ -31,6 +31,8 @@ public:
 
     // 충돌 판정용 바운드 계산
     virtual FAxisAlignedBoundingBox CalcLocalBounds();
+    virtual void UpdateLocalBounds();
+    const FAxisAlignedBoundingBox GetLocalBounds() const { return LocalBounds; }
 
     // 색상 설정 및 조회
     const FVector& GetColor() const { return Color; }
@@ -49,4 +51,6 @@ protected:
     FTransform RelativeTransform;
     FVector Color{1.0f, 1.0f, 1.0f};
     float ColorAmount = 0.0f;
+
+    FAxisAlignedBoundingBox LocalBounds;
 };
