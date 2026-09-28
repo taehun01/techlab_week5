@@ -18,6 +18,10 @@ struct FRenderData
     int32 indicesCount = -1;
     bool bSelected = false;
     TArray<FInstanceData> Instances;
+
+    // 수집 단계에서 한 번 조회한 리소스 포인터 (draw 시 FName 재조회 방지)
+    FStaticMesh* MeshPtr = nullptr;
+    FMaterial* MaterialPtr = nullptr;
 };
 
 // 한 프레임의 드로우 요청을 수집하는 큐

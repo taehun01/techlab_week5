@@ -22,8 +22,6 @@ class FRenderView final {
 	FRenderer& Renderer;
 	FRenderQueue RenderQueue;
 
-	FMaterial* CurrentMaterial;
-
 	// 개별 렌더 데이터 드로우
 	void DrawRenderData(const FRenderData& Data);
 

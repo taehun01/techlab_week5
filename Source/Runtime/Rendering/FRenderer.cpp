@@ -753,6 +753,8 @@ void FRenderer::DrawInstances(const FCamera &Camera) {
 
 void FRenderer::DrawTextInstances(const FCamera &Camera, const FName &MeshId,
                                   const FName &MaterialId) {
+  // 이 함수는 캐시를 거치지 않고 직접 바인딩하며 중간 return이 많으므로 시작 시 무효화
+  ResetRenderState();
   auto &ResLib = FRenderResourceLibrary::Get();
 
   // 상수 버퍼 업데이트

@@ -44,6 +44,8 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 
         const auto& RenderDatas = MeshComponent->GetRenderDatas(*View.Camera);
+        // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
+        if (RenderDatas.empty()) continue;
 
         // 공통 Matrix 및 Color 계산 (루프 밖 1회 수행)
         const FMatrix World = MeshComponent->GetRenderMatrix(*View.Camera);
@@ -65,7 +67,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
 
         // 슬롯별 RenderData 순회 처리
-        if (RenderDatas.empty()) return;
         for (FRenderData Data : RenderDatas)
         {
             Data.bSelected = bSelected;
@@ -84,8 +85,12 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             Data.Constants.DisableShading = DisableShading;
 
             // 머티리얼의 블렌드 모드에 따라 불투명 및 반투명 패스 자동 분기
-            CurrentMaterial = ResLib.GetMaterial(Data.MaterialId).get();
-            if (CurrentMaterial && (CurrentMaterial->GetBlendMode() == EBlendMode::Additive || CurrentMaterial->GetBlendMode() == EBlendMode::Translucent))
+            // 메시/머티리얼은 여기서 한 번만 조회해 RenderData에 포인터로 보관
+            FMaterial* Material = ResLib.GetMaterial(Data.MaterialId).get();
+            Data.MeshPtr = ResLib.GetMesh(Data.MeshId).get();
+            Data.MaterialPtr = Material ? Material : ResLib.GetMaterial(FName("Simple")).get();
+
+            if (Material && (Material->GetBlendMode() == EBlendMode::Additive || Material->GetBlendMode() == EBlendMode::Translucent))
             {
                 RenderQueue.PushTranslucent(Data);
             }
@@ -358,18 +363,22 @@ void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& Pip
 
 void FRenderView::DrawRenderData(const FRenderData& Data)
 {
-    auto& ResLib = FRenderResourceLibrary::Get();
-    auto Mesh = ResLib.GetMesh(Data.MeshId);
+    FStaticMesh* Mesh = Data.MeshPtr;
+    FMaterial* Material = Data.MaterialPtr;
 
-    if (!CurrentMaterial)
+    // 수집 단계를 거치지 않은 데이터 대비 폴백 조회
+    if (!Mesh || !Material)
     {
-        CurrentMaterial = ResLib.GetMaterial(FName("Simple")).get();
+        auto& ResLib = FRenderResourceLibrary::Get();
+        if (!Mesh) Mesh = ResLib.GetMesh(Data.MeshId).get();
+        if (!Material) Material = ResLib.GetMaterial(Data.MaterialId).get();
+        if (!Material) Material = ResLib.GetMaterial(FName("Simple")).get();
     }
 
-    if (!Mesh || !CurrentMaterial) return;
+    if (!Mesh || !Material) return;
 
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
-    Renderer.Draw(*Mesh, *CurrentMaterial, Data.Constants, Data.startidx, Data.indicesCount);
+    Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount);
 }
 
 

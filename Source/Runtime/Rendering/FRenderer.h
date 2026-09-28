@@ -198,7 +198,12 @@ public:
         TConstants LocalConstants = Constants;
         LocalConstants.MaterialDiffuse = InMaterial.GetDiffuseColor();
         UpdateConstantBuffer(LocalConstants);
-        if (!CurrentRenderState.bIsConstantBufferBind)
+        if (Slot != 0u)
+        {
+            // b0 이외 슬롯 요청은 캐시 대상이 아니므로 매번 바인딩
+            BindConstantBuffer(Slot);
+        }
+        else if (!CurrentRenderState.bIsConstantBufferBind)
         {
             BindConstantBuffer();
             CurrentRenderState.bIsConstantBufferBind = true;
@@ -209,14 +214,13 @@ public:
         {
             Pipeline = GetPipeline(FName("Simple_Wireframe")).get();
         }
-        if (Pipeline != CurrentRenderState.Pipeline || Pipeline || Pipeline->GetStencilRef() != CurrentRenderState.StencilRef)
+        // 파이프라인 또는 StencilRef가 바뀐 경우에만 재바인딩
+        if (Pipeline &&
+            (Pipeline != CurrentRenderState.Pipeline || Pipeline->GetStencilRef() != CurrentRenderState.StencilRef))
         {
-            if (Pipeline)
-            {
-                CurrentRenderState.StencilRef = Pipeline->GetStencilRef();
-                CurrentRenderState.Pipeline = Pipeline;
-                CurrentRenderState.Pipeline->Bind(*Context.Get());
-            }
+            Pipeline->Bind(*Context.Get());
+            CurrentRenderState.Pipeline = Pipeline;
+            CurrentRenderState.StencilRef = Pipeline->GetStencilRef();
         }
 
         if (CurrentRenderState.Material != &InMaterial)
