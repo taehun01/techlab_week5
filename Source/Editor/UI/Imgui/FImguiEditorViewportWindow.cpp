@@ -2,6 +2,8 @@
 
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/Engine/FRayCastingManager.h"
+#include "Runtime/Engine/FSceneOctree.h"
+#include "Runtime/Engine/UScene.h"
 #include "Runtime/Input/FInputManager.h"
 #include "Runtime/Math/FVector.h"
 #include "Runtime/Core/Log.h"
@@ -10,6 +12,7 @@
 #include "ThirdParty/Imgui/imgui.h"
 #include "ThirdParty/Imgui/imgui_internal.h"
 #include <Runtime\CoreUObject\UMeshComponent.h>
+#include <chrono>
 
 void FImguiEditorViewportWindow::Process(FEditor& Editor, float DeltaTime)
 {
@@ -584,11 +587,30 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
     UMeshComponent* HitComponent = nullptr;
     FVector ImpactPoint;
 
-    // 옥트리로 후보를 좁히고 가까운 순으로 검사 (GetSceneOctree가 예약된 갱신을 먼저 반영)
-    const bool bHit = FRayCastingManager::RaycastScene(
-        FRayCastingManager::CreateRayFromScreenPosition(
-            Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels),
-        Viewport.ViewportCamera, Scene->GetSceneOctree(), HitComponent, ImpactPoint);
+    const FRay Ray = FRayCastingManager::CreateRayFromScreenPosition(
+        Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels);
+
+    // 예약된 옥트리 갱신(Flush)은 측정에서 제외하도록 먼저 반영해 둔다.
+    const FSceneOctree &Octree = Scene->GetSceneOctree();
+
+    bool bHit = false;
+    const auto PickStart = std::chrono::steady_clock::now();
+    if (Editor.bUseOctreePicking)
+    {
+        // 옥트리로 후보를 좁히고 가까운 순으로 검사
+        bHit = FRayCastingManager::RaycastScene(Ray, Viewport.ViewportCamera, Octree, HitComponent, ImpactPoint);
+    }
+    else
+    {
+        // 비교용: 씬의 모든 메시 컴포넌트를 검사
+        bHit = FRayCastingManager::RayIntersectsMeshes(Ray, Viewport.ViewportCamera,
+            Scene->GetRenderComponents(), HitComponent, ImpactPoint);
+    }
+    const double PickMs = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - PickStart).count();
+
+    (Editor.bUseOctreePicking ? Editor.OctreePickingStat : Editor.BruteForcePickingStat).Add(PickMs);
+    UE_LOG("[Picking] %s: %.3f ms", Editor.bUseOctreePicking ? "Octree" : "BruteForce", PickMs);
 
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.
     if (!bHit || !HitComponent || !HitComponent->GetActorOwner())

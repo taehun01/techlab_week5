@@ -36,7 +36,54 @@ void FImguiControlPanelWindow::Process(FEditor& Editor)
     ImGui::Separator();
     //전역조명
     DirectionLightSetting(Editor);
+    ImGui::Separator();
+    // 피킹 방식 선택 및 성능 비교
+    PickingSetting(Editor);
     ImGui::End();
+}
+
+void FImguiControlPanelWindow::PickingSetting(FEditor& Editor)
+{
+    ImGui::Text("Picking");
+    ImGui::Checkbox("Use Octree Picking", &Editor.bUseOctreePicking);
+
+    if (ImGui::BeginTable("PickingStats", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+    {
+        ImGui::TableSetupColumn("Method");
+        ImGui::TableSetupColumn("Last (ms)");
+        ImGui::TableSetupColumn("Avg (ms)");
+        ImGui::TableSetupColumn("Count");
+        ImGui::TableHeadersRow();
+
+        auto Row = [](const char* Name, const FEditor::FPickingStat& Stat, bool bActive)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            if (bActive)
+            {
+                ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "%s", Name);
+            }
+            else
+            {
+                ImGui::TextUnformatted(Name);
+            }
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%.3f", Stat.LastMs);
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%.3f", Stat.GetAverageMs());
+            ImGui::TableSetColumnIndex(3);
+            ImGui::Text("%d", Stat.Count);
+        };
+        Row("Octree", Editor.OctreePickingStat, Editor.bUseOctreePicking);
+        Row("Brute Force", Editor.BruteForcePickingStat, !Editor.bUseOctreePicking);
+        ImGui::EndTable();
+    }
+
+    if (ImGui::Button("Reset Picking Stats"))
+    {
+        Editor.OctreePickingStat.Reset();
+        Editor.BruteForcePickingStat.Reset();
+    }
 }
 
 void FImguiControlPanelWindow::ActorSpawnSetting(FEditor& Editor)

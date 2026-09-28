@@ -67,6 +67,21 @@ public:
   void SpawnInstancingToCurrentScene(int Count);
   // 피킹 등에서 현재 씬의 렌더링 대상 컴포넌트가 필요할 때 사용
   [[nodiscard]] TArray<UMeshComponent*> GetMeshComponents() const;
+
+  // 피킹 성능 비교용 (컨트롤 패널에서 방식 선택, 뷰포트에서 측정)
+  struct FPickingStat
+  {
+    double LastMs = 0.0;
+    double TotalMs = 0.0;
+    int32 Count = 0;
+
+    void Add(double Ms) { LastMs = Ms; TotalMs += Ms; ++Count; }
+    [[nodiscard]] double GetAverageMs() const { return Count > 0 ? TotalMs / Count : 0.0; }
+    void Reset() { *this = FPickingStat{}; }
+  };
+  bool bUseOctreePicking = true;
+  FPickingStat OctreePickingStat;
+  FPickingStat BruteForcePickingStat;
   FGizmo &GetGizmo() { return Gizmo; }
   FGrid &GetGrid() { return Grid; }
   FRenderResourceLibrary *GetRendererLibrary();
