@@ -27,9 +27,7 @@ public:
 	void RaycastCandidates(const FRay& Ray, TArray<FSceneRayCandidate>& OutCandidates) const;
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<UMeshComponent*>& OutComponents) const;
 
-	// 카메라를 향하는 컴포넌트(빌보드, 텍스트)는 옥트리에 넣지 않고 여기에 모은다.
-	// 조회 결과에 포함되지 않으므로 필요하면 호출하는 쪽에서 직접 검사한다.
-	[[nodiscard]] const TArray<UMeshComponent*>& GetCameraFacingComponents() const { return CameraFacingComponents; }
+	const TArray<UMeshComponent*>& GetCameraFacingComponents() const { return CameraFacingComponents; }
 
 private:
 	FOctree Tree;

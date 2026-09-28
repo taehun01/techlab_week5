@@ -72,7 +72,6 @@ void FSceneOctree::Unregister(UMeshComponent* Component)
 
 void FSceneOctree::MarkDirty(UMeshComponent* Component)
 {
-	// 카메라를 향하는 컴포넌트는 옥트리에 없으므로 갱신할 것이 없다.
 	if (Component->IsCameraFacing())
 	{
 		return;
