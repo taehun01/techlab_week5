@@ -17,6 +17,27 @@ namespace
 			| (ElementCenter.Y >= Center.Y ? 2 : 0)
 			| (ElementCenter.Z >= Center.Z ? 1 : 0);
 	}
+
+	bool IsIntersect(const FAxisAlignedBoundingBox& A, const FAxisAlignedBoundingBox& B)
+	{
+		return !(A.Min.X > B.Max.X
+			|| A.Min.Y > B.Max.Y
+			|| A.Min.Z > B.Max.Z
+			|| A.Max.X < B.Min.X
+			|| A.Max.Y < B.Min.Y
+			|| A.Max.Z < B.Min.Z);
+	}
+
+	FAxisAlignedBoundingBox ToAABB(const FVector& Center, float HalfSize)
+	{
+		FVector Half = FVector(HalfSize, HalfSize, HalfSize);
+
+		FAxisAlignedBoundingBox Box;
+		Box.Min = Center - Half;
+		Box.Max = Center + Half;
+
+		return Box;
+	}
 }
 
 FOctree::FOctree(const FVector& RootCenter, float RootHalfSize, const FOctreeSettings& InSettings)
@@ -66,12 +87,31 @@ void FOctree::Insert(const FOctreeElement& Element)
 
 void FOctree::Remove(int32 ObjectIndex)
 {
+	auto It = ElementIdByObjectIndex.find(ObjectIndex);
+	if (It == ElementIdByObjectIndex.end())
+	{
+		return;
+	}
 
+	auto [NodeIndex, SlotIndex] = It->second;
+	ElementIdByObjectIndex.erase(It);
+
+	TArray<FOctreeElement>& NodeElements = Elements[NodeIndex];
+	int32 LastIndex = static_cast<int32>(NodeElements.size()) - 1;
+
+	if (SlotIndex != LastIndex)
+	{
+		NodeElements[SlotIndex] = NodeElements[LastIndex];
+		ElementIdByObjectIndex[NodeElements[SlotIndex].ObjectIndex].SlotIndex = SlotIndex;
+	}
+	NodeElements.pop_back();
 }
 
 void FOctree::Update(int32 ObjectIndex, const FAxisAlignedBoundingBox& NewBounds)
 {
-
+	// TODO: 소속 Node가 변경되지 않는다면 Bounds만 교체하는 방법 추가
+	Remove(ObjectIndex);
+	Insert({ ObjectIndex, NewBounds });
 }
 
 void FOctree::Clear()
@@ -93,7 +133,7 @@ void FOctree::Clear()
 
 void FOctree::QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects) const
 {
-
+	QueryAABB(Box, OutObjects, 0);
 }
 
 void FOctree::AddToNode(int32 NodeIndex, const FOctreeElement& Element)
@@ -121,7 +161,7 @@ void FOctree::Split(int32 NodeIndex)
 	FNode& Node = Nodes[NodeIndex];
 	float Half = Nodes[NodeIndex].HalfSize * 0.5f;
 
-	for (int I = 0; I < 8; I++)
+	for (int32 I = 0; I < 8; I++)
 	{
 		float X = (I & 4 ? 1.0f : -1.0f) * Half;
 		float Y = (I & 2 ? 1.0f : -1.0f) * Half;
@@ -155,5 +195,32 @@ void FOctree::Split(int32 NodeIndex)
 	for (const FOctreeElement& Element : Temp)
 	{
 		AddToNode(NodeIndex, Element);
+	}
+}
+
+void FOctree::QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects, int32 NodeIndex) const
+{
+	for (const auto& Element : Elements[NodeIndex])
+	{
+		if (IsIntersect(Element.Bounds, Box))
+		{
+			OutObjects.push_back(Element.ObjectIndex);
+		}
+	}
+
+	if (Nodes[NodeIndex].FirstChild == -1)
+	{
+		return;
+	}
+
+	for (int32 I = 0; I < 8; I++)
+	{
+		int32 ChildIndex = Nodes[NodeIndex].FirstChild + I;
+		const FNode& Node = Nodes[ChildIndex];
+
+		if (IsIntersect(ToAABB(Node.Center, Node.HalfSize * Settings.LooseFactor), Box))
+		{
+			QueryAABB(Box, OutObjects, ChildIndex);
+		}
 	}
 }

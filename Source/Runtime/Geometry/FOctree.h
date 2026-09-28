@@ -23,10 +23,12 @@ class FOctree
 {
 public:
 	FOctree(const FVector& RootCenter, float RootHalfSize, const FOctreeSettings& InSettings = {});
+
 	void Insert(const FOctreeElement& Element);
 	void Remove(int32 ObjectIndex);
 	void Update(int32 ObjectIndex, const FAxisAlignedBoundingBox& NewBounds);
 	void Clear();
+
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects) const;
 
 private:
@@ -52,4 +54,5 @@ private:
 
 	void AddToNode(int32 NodeIndex, const FOctreeElement& Element);
 	void Split(int32 NodeIndex);
+	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects, int32 NodeIndex) const;
 };
