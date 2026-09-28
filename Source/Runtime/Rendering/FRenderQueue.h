@@ -47,6 +47,9 @@ public:
     const TArray<FRenderData>& GetTextRenderQ() const { return TextRenderQ; }
     const TArray<FRenderData>& GetInstancingRenderQ() const { return InstancingRenderQ; }
 
+    const TArray<std::pair<uint64, uint32>>& GetOpaqueSortKeys() const { return OpaqueSortKeys; }
+    const TArray<std::pair<uint64, uint32>>& GetTranslucentSortKeys() const { return TranslucentSortKeys; }
+
     // 프레임 끝에 호출
     void Clear() { 
         OpaqueRenderQ.clear();
@@ -58,21 +61,10 @@ public:
         TranslucentSortKeys.clear();
     }
 
-    void Sort(TArray<FRenderData>& InRenderQ, TArray<std::pair<uint64, uint32>>& InSortKeys)
+    void Sort()
     {
-        std::sort(InSortKeys.begin(), InSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
-        TArray<FRenderData> NewRenderQ;
-        for (const auto& [SortKey, Index] : InSortKeys)
-        {
-            NewRenderQ.push_back(std::move(InRenderQ[Index]));
-        }
-        InRenderQ = std::move(NewRenderQ);
-    }
-
-    void SortAll()
-    {
-        Sort(OpaqueRenderQ, OpaqueSortKeys);
-        Sort(TranslucentRenderQ, TranslucentSortKeys);
+        std::sort(OpaqueSortKeys.begin(), OpaqueSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
+        std::sort(TranslucentSortKeys.begin(), TranslucentSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
     }
 
     bool IsOpaqueRQEmpty() const { return OpaqueRenderQ.empty(); }

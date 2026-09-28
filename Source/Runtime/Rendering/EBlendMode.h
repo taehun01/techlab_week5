@@ -4,6 +4,7 @@
 
 enum class EBlendMode : uint8
 {
+  None,
   Opaque,
   Masked,
   Translucent,

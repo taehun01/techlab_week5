@@ -60,8 +60,10 @@ public:
   bool SetTextureByName(const FName& InTextureName) { return SetDiffuseMapByName(InTextureName); }
 
   // 파이프라인 블렌드 모드 조회
-  [[nodiscard]] EBlendMode GetBlendMode() const {
-    return Pipeline ? Pipeline->GetPipelineDesc().BlendMode : EBlendMode::Opaque;
+  [[nodiscard]] EBlendMode GetBlendMode() {
+      if (BlendMode != EBlendMode::None)
+          return BlendMode;
+      return BlendMode = Pipeline ? Pipeline->GetPipelineDesc().BlendMode : EBlendMode::Opaque;;
   }
 
   void SetDiffuseColor(FVector4 InDiffuseColor) { DiffuseColor = InDiffuseColor; }
@@ -78,6 +80,8 @@ private:
   TSharedPtr<FTexture> Textures[static_cast<size_t>(EMaterialTextureSlot::Count)];
 
   FVector4 DiffuseColor{ 1.f, 1.f, 1.f, 1.f };
+
+  EBlendMode BlendMode = EBlendMode::None;
 };
 
 

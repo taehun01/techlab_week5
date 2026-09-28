@@ -30,7 +30,7 @@ class FRenderPipeline final {
   friend class FRenderResourceLibrary;
 
 public:
-  [[nodiscard]] FRenderPipelineDesc GetPipelineDesc() const { return desc; }
+  [[nodiscard]] const FRenderPipelineDesc& GetPipelineDesc() const { return desc; }
   void SetStencilRef(UINT InRef) { StencilRef = InRef; }
   [[nodiscard]] UINT GetStencilRef() const { return StencilRef; }
   uint16 SortID = 0u;
