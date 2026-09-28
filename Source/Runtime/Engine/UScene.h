@@ -98,7 +98,10 @@ public:
   // 부모가 움직이면 자식도 움직이므로 같은 액터의 메시 컴포넌트를 모두 표시한다.
   void MarkBoundsDirty(USceneComponent* Component);
 
-  // 공간 조회용 옥트리. 예약된 갱신을 반영한 뒤 반환한다.
+  // 예약된 옥트리 갱신을 반영한다. 트랜스폼 변경이 끝난 프레임 끝에서 호출한다.
+  void FlushSceneOctree() { SceneOctree.Flush(); }
+
+  // 공간 조회용 옥트리. 예약된 갱신을 반영한 뒤 반환한다 (프레임 중간에 바뀐 것에 대한 안전장치).
   [[nodiscard]] FSceneOctree& GetSceneOctree();
 
   void RemoveActor(AActor* Actor);
