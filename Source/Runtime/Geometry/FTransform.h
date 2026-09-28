@@ -33,5 +33,16 @@ struct FTransform
 
 inline FMatrix FTransform::ToMatrix() const
 {
-	return FMatrix::MakeScale(Scale3D) * Rotation.ToMatrixRow() * FMatrix::MakeTranslation(Location);
+	FMatrix R = Rotation.ToMatrixRow();
+	for (int j = 0; j < 3; ++j)
+	{
+		R.M[0][j] *= Scale3D.X;
+		R.M[1][j] *= Scale3D.Y;
+		R.M[2][j] *= Scale3D.Z;
+	}
+	R.M[3][0] = Location.X;
+	R.M[3][1] = Location.Y;
+	R.M[3][2] = Location.Z;
+	R.M[3][3] = 1.0f;
+	return R;
 }
