@@ -590,27 +590,35 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
     const FRay Ray = FRayCastingManager::CreateRayFromScreenPosition(
         Viewport.ViewportCamera, LocalMousePixels, ViewportSizePixels);
 
-    // 예약된 옥트리 갱신(Flush)은 측정에서 제외하도록 먼저 반영해 둔다.
-    const FSceneOctree &Octree = Scene->GetSceneOctree();
+    using FClock = std::chrono::steady_clock;
+    auto ToMs = [](FClock::duration D) { return std::chrono::duration<double, std::milli>(D).count(); };
 
     bool bHit = false;
-    const auto PickStart = std::chrono::steady_clock::now();
+    const auto PickStart = FClock::now();
     if (Editor.bUseOctreePicking)
     {
+        // 옥트리 방식의 총비용 = 예약된 갱신 반영(Flush) + 조회. 체감 지연과 맞추기 위해 둘 다 측정에 포함한다.
+        const FSceneOctree &Octree = Scene->GetSceneOctree();
+        const auto FlushEnd = FClock::now();
+
         // 옥트리로 후보를 좁히고 가까운 순으로 검사
         bHit = FRayCastingManager::RaycastScene(Ray, Viewport.ViewportCamera, Octree, HitComponent, ImpactPoint);
+
+        const double TotalMs = ToMs(FClock::now() - PickStart);
+        const double FlushMs = ToMs(FlushEnd - PickStart);
+        Editor.OctreePickingStat.Add(TotalMs, FlushMs);
+        UE_LOG("[Picking] Octree: %.3f ms (Flush %.3f ms + Query %.3f ms)", TotalMs, FlushMs, TotalMs - FlushMs);
     }
     else
     {
-        // 비교용: 씬의 모든 메시 컴포넌트를 검사
+        // 비교용: 씬의 모든 메시 컴포넌트를 검사 (옥트리를 쓰지 않으므로 Flush 없음)
         bHit = FRayCastingManager::RayIntersectsMeshes(Ray, Viewport.ViewportCamera,
             Scene->GetRenderComponents(), HitComponent, ImpactPoint);
-    }
-    const double PickMs = std::chrono::duration<double, std::milli>(
-        std::chrono::steady_clock::now() - PickStart).count();
 
-    (Editor.bUseOctreePicking ? Editor.OctreePickingStat : Editor.BruteForcePickingStat).Add(PickMs);
-    UE_LOG("[Picking] %s: %.3f ms", Editor.bUseOctreePicking ? "Octree" : "BruteForce", PickMs);
+        const double TotalMs = ToMs(FClock::now() - PickStart);
+        Editor.BruteForcePickingStat.Add(TotalMs);
+        UE_LOG("[Picking] BruteForce: %.3f ms", TotalMs);
+    }
 
     // 피킹은 액터 단위로 선택한다. 소유 액터가 없으면 선택할 수 없다.
     if (!bHit || !HitComponent || !HitComponent->GetActorOwner())

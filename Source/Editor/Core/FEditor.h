@@ -69,14 +69,25 @@ public:
   [[nodiscard]] TArray<UMeshComponent*> GetMeshComponents() const;
 
   // 피킹 성능 비교용 (컨트롤 패널에서 방식 선택, 뷰포트에서 측정)
+  // 시간은 모두 Flush를 포함한 총시간. Flush 값은 그중 옥트리 갱신이 차지한 몫이다.
   struct FPickingStat
   {
     double LastMs = 0.0;
     double TotalMs = 0.0;
+    double LastFlushMs = 0.0;
+    double TotalFlushMs = 0.0;
     int32 Count = 0;
 
-    void Add(double Ms) { LastMs = Ms; TotalMs += Ms; ++Count; }
+    void Add(double Ms, double FlushMs = 0.0)
+    {
+      LastMs = Ms;
+      TotalMs += Ms;
+      LastFlushMs = FlushMs;
+      TotalFlushMs += FlushMs;
+      ++Count;
+    }
     [[nodiscard]] double GetAverageMs() const { return Count > 0 ? TotalMs / Count : 0.0; }
+    [[nodiscard]] double GetAverageFlushMs() const { return Count > 0 ? TotalFlushMs / Count : 0.0; }
     void Reset() { *this = FPickingStat{}; }
   };
   bool bUseOctreePicking = true;

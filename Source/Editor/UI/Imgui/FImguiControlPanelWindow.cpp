@@ -47,15 +47,18 @@ void FImguiControlPanelWindow::PickingSetting(FEditor& Editor)
     ImGui::Text("Picking");
     ImGui::Checkbox("Use Octree Picking", &Editor.bUseOctreePicking);
 
-    if (ImGui::BeginTable("PickingStats", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
+    // 시간은 Flush(옥트리 갱신 반영)를 포함한 총시간. Flush 열은 그중 갱신이 차지한 몫.
+    if (ImGui::BeginTable("PickingStats", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
     {
         ImGui::TableSetupColumn("Method");
         ImGui::TableSetupColumn("Last (ms)");
         ImGui::TableSetupColumn("Avg (ms)");
+        ImGui::TableSetupColumn("Last Flush");
+        ImGui::TableSetupColumn("Avg Flush");
         ImGui::TableSetupColumn("Count");
         ImGui::TableHeadersRow();
 
-        auto Row = [](const char* Name, const FEditor::FPickingStat& Stat, bool bActive)
+        auto Row = [](const char* Name, const FEditor::FPickingStat& Stat, bool bActive, bool bHasFlush)
         {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -72,10 +75,14 @@ void FImguiControlPanelWindow::PickingSetting(FEditor& Editor)
             ImGui::TableSetColumnIndex(2);
             ImGui::Text("%.3f", Stat.GetAverageMs());
             ImGui::TableSetColumnIndex(3);
+            if (bHasFlush) ImGui::Text("%.3f", Stat.LastFlushMs); else ImGui::TextDisabled("-");
+            ImGui::TableSetColumnIndex(4);
+            if (bHasFlush) ImGui::Text("%.3f", Stat.GetAverageFlushMs()); else ImGui::TextDisabled("-");
+            ImGui::TableSetColumnIndex(5);
             ImGui::Text("%d", Stat.Count);
         };
-        Row("Octree", Editor.OctreePickingStat, Editor.bUseOctreePicking);
-        Row("Brute Force", Editor.BruteForcePickingStat, !Editor.bUseOctreePicking);
+        Row("Octree", Editor.OctreePickingStat, Editor.bUseOctreePicking, true);
+        Row("Brute Force", Editor.BruteForcePickingStat, !Editor.bUseOctreePicking, false);
         ImGui::EndTable();
     }
 
