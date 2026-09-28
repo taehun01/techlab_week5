@@ -8,6 +8,7 @@
 #include "Runtime/CoreUObject/UMeshComponent.h"
 #include "Runtime/Core/Log.h"
 #include <Runtime\Core\TArray.h>
+#include "../Geometry/FAxisAlignedBoundingBox.h"
 
 constexpr float Epsilon = 0.000001f;
 
@@ -39,6 +40,8 @@ FRay FRayCastingManager::CreateRayFromScreenPosition(const FCamera& Camera, cons
 
 bool FRayCastingManager::RayIntersectsMeshes(const FRay& Ray, const FCamera& Camera, const TArray<UMeshComponent*>& Components, UMeshComponent*& HitComponent, FVector& OutImpactPoint)
 {
+	FFrustum CullingFrustum = Camera.CreateFrustum();
+
 	HitComponent = nullptr;
 
 	float ClosestHit = (std::numeric_limits<float>::max)();
@@ -59,6 +62,12 @@ bool FRayCastingManager::RayIntersectsMeshes(const FRay& Ray, const FCamera& Cam
 		}
 
 		FMatrix World = Component->GetRenderMatrix(Camera);
+
+		const FAxisAlignedBoundingBox WorldBounds = { Component->GetLocalBounds(), World };
+		if (!CullingFrustum.Intersects(WorldBounds))
+		{
+			continue;
+		}
 
 		float HitDistance;
 		FVector ImpactPoint;
