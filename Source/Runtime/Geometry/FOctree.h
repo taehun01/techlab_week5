@@ -4,6 +4,7 @@
 #include "Runtime/Core/TMap.h"
 #include "Runtime/Core/IntTypes.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
+#include "Runtime/Geometry/FRay.h"
 #include "Runtime/Math/FVector.h"
 
 struct FOctreeElement
@@ -19,6 +20,12 @@ struct FOctreeSettings
 	float LooseFactor = 2.0f;
 };
 
+struct FOctreeRayHit
+{
+	int32 NodeIndex = -1;
+	float T = -1.0f;
+};
+
 class FOctree
 {
 public:
@@ -30,6 +37,7 @@ public:
 	void Clear();
 
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects) const;
+	void QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits) const;
 
 private:
 	struct FNode
@@ -55,4 +63,5 @@ private:
 	void AddToNode(int32 NodeIndex, const FOctreeElement& Element);
 	void Split(int32 NodeIndex);
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects, int32 NodeIndex) const;
+	void QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits, int32 NodeIndex) const;
 };

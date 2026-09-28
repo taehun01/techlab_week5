@@ -136,6 +136,11 @@ void FOctree::QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutOb
 	QueryAABB(Box, OutObjects, 0);
 }
 
+void FOctree::QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits) const
+{
+	QueryRay(Ray, OutHits, 0);
+}
+
 void FOctree::AddToNode(int32 NodeIndex, const FOctreeElement& Element)
 {
 	ElementIdByObjectIndex[Element.ObjectIndex]
@@ -221,6 +226,35 @@ void FOctree::QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutOb
 		if (IsIntersect(ToAABB(Node.Center, Node.HalfSize * Settings.LooseFactor), Box))
 		{
 			QueryAABB(Box, OutObjects, ChildIndex);
+		}
+	}
+}
+
+void FOctree::QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits, int32 NodeIndex) const
+{
+	for (const auto& Element : Elements[NodeIndex])
+	{
+		float T = -1.0f;
+		if (IntersectRayAABB(Ray, Element.Bounds, T))
+		{
+			OutHits.push_back({ Element.ObjectIndex, T });
+		}
+	}
+
+	if (Nodes[NodeIndex].FirstChild == -1)
+	{
+		return;
+	}
+
+	for (int32 I = 0; I < 8; I++)
+	{
+		int32 ChildIndex = Nodes[NodeIndex].FirstChild + I;
+		const FNode& Node = Nodes[ChildIndex];
+		float T = -1.0f;
+
+		if (IntersectRayAABB(Ray, ToAABB(Node.Center, Node.HalfSize * Settings.LooseFactor), T))
+		{
+			QueryRay(Ray, OutHits, ChildIndex);
 		}
 	}
 }
