@@ -3,4 +3,8 @@
   <Include Path="cppcorecheckarithmeticrules.ruleset" Action="Default" />
   <Include Path="cppcorecheckboundsrules.ruleset" Action="Default" />
   <Include Path="nativerecommendedrules.ruleset" Action="Default" />
+  <Rules AnalyzerId="Microsoft.Analyzers.NativeCodeAnalysis" RuleNamespace="Microsoft.Rules.Native">
+    <!-- bounds.4: 컨테이너 operator[] 대신 gsl::at() 권장 (GSL 미사용, 범위 검사는 assert로 대체) -->
+    <Rule Id="C26446" Action="None" />
+  </Rules>
 </RuleSet>
