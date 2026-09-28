@@ -68,6 +68,7 @@ public:
   const FVector4 GetDiffuseColor() const { return DiffuseColor; };
 
   FString MaterialId;
+  uint16 SortID = 0u;
 private:
   void BindResources(ID3D11DeviceContext &Context) const;
 

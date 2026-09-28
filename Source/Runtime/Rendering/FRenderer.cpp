@@ -411,6 +411,7 @@ FRenderer::CreateRenderPipeline(const FRenderPipelineDesc &Desc,
     return nullptr;
   }
 
+  Pipeline->SortID = static_cast<uint16>(FRenderResourceLibrary::Get().AllPipelineMap.size());
   return Pipeline;
 }
 

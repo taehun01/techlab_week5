@@ -239,6 +239,7 @@ bool FRenderResourceLibrary::CreateSolidWireframePipeline() {
     TSharedPtr<FRenderPipeline> SolidPipeline =
         Renderer.CreateRenderPipeline(Desc, EViewModeIndex::VMI_Lit);
     if (SolidPipeline) {
+        SolidPipeline->SortID = static_cast<uint16>(AllPipelineMap.size());
         AllPipelineMap[FName("Simple_Solid")] = SolidPipeline;
     }
 
@@ -246,6 +247,7 @@ bool FRenderResourceLibrary::CreateSolidWireframePipeline() {
     TSharedPtr<FRenderPipeline> WireframePipeline =
         Renderer.CreateRenderPipeline(Desc, EViewModeIndex::VMI_Wireframe);
     if (WireframePipeline) {
+        WireframePipeline->SortID = static_cast<uint16>(AllPipelineMap.size());
         AllPipelineMap[FName("Simple_Wireframe")] = WireframePipeline;
     }
 
@@ -360,6 +362,7 @@ bool FRenderResourceLibrary::CreateOutlinePipeline() {
         return false;
     }
 
+    Pipeline->SortID = static_cast<uint16>(AllPipelineMap.size());
     AllPipelineMap[FName("Outline")] = Pipeline;
     return true;
 }
@@ -459,6 +462,7 @@ bool FRenderResourceLibrary::CreatePostProcessPipeline() {
         return false;
     }
 
+    Pipeline->SortID = static_cast<uint16>(AllPipelineMap.size());
     AllPipelineMap[FName("PostProcess")] = Pipeline;
     return true;
 }
@@ -1518,12 +1522,13 @@ bool FRenderResourceLibrary::CreateEditTextures() {
 
 TSharedPtr<FMaterial>
 FRenderResourceLibrary::RegisterMaterial(const FString& Id, TSharedPtr<FMaterial> inMaterial) {
-    if (AllMaterialMap[Id])
+    if (AllMaterialMap.contains(Id))
         return AllMaterialMap[Id];
 
     if (inMaterial) {
         inMaterial->MaterialId = Id;
     }
+    inMaterial->SortID = static_cast<uint16>(AllMaterialMap.size());
     AllMaterialMap[Id] = inMaterial;
     return inMaterial;
 }

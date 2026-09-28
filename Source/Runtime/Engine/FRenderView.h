@@ -18,6 +18,7 @@ class UScene;
 class UStaticMesh;
 struct FPreviewRenderTarget;
 
+
 class FRenderView final {
 	FRenderer& Renderer;
 	FRenderQueue RenderQueue;
@@ -80,4 +81,6 @@ public:
 
 	FRenderQueue& GetRenderQueue() { return RenderQueue; }
 	const FRenderQueue& GetRenderQueue() const { return RenderQueue; }
+
+	static uint64 GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint32 Depth);
 };

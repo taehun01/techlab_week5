@@ -6,6 +6,7 @@
 #include "Runtime/Core/TArray.h"
 #include "Runtime/Core/PointerTypes.h"
 #include <Runtime\Core\IntTypes.h>
+#include <algorithm>
 
 // 렌더링에 필요한 드로우 정보
 struct FRenderData
@@ -19,7 +20,7 @@ struct FRenderData
     bool bSelected = false;
     TArray<FInstanceData> Instances;
 
-    // 수집 단계에서 한 번 조회한 리소스 포인터 (draw 시 FName 재조회 방지)
+    // 수집 단계에서 한 번 조회한 리소스 포인터 (Draw 시 FName 재조회 방지)
     FStaticMesh* MeshPtr = nullptr;
     FMaterial* MaterialPtr = nullptr;
 };
@@ -29,8 +30,14 @@ class FRenderQueue
 {
 public:
     // 패스별 아이템 추가
-    void PushOpaque(const FRenderData& Data) { OpaqueRenderQ.push_back(Data); }
-    void PushTranslucent(const FRenderData& Data) { TranslucentRenderQ.push_back(Data); }
+    void PushOpaque(const FRenderData& Data, uint64 SortKey) { 
+        OpaqueSortKeys.push_back({ SortKey, static_cast<uint32>(OpaqueRenderQ.size()) });
+        OpaqueRenderQ.push_back(Data); 
+    }
+    void PushTranslucent(const FRenderData& Data, uint64 SortKey) { 
+        TranslucentSortKeys.push_back({ SortKey, static_cast<uint32>(TranslucentRenderQ.size()) });
+        TranslucentRenderQ.push_back(Data); 
+    }
     void PushText(const FRenderData& Data) { TextRenderQ.push_back(Data); }
     void PushInstancing(const FRenderData& Data) { InstancingRenderQ.push_back(Data); }
 
@@ -46,6 +53,26 @@ public:
         TranslucentRenderQ.clear();
         TextRenderQ.clear();
         InstancingRenderQ.clear();
+
+        OpaqueSortKeys.clear();
+        TranslucentSortKeys.clear();
+    }
+
+    void Sort(TArray<FRenderData>& InRenderQ, TArray<std::pair<uint64, uint32>>& InSortKeys)
+    {
+        std::sort(InSortKeys.begin(), InSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
+        TArray<FRenderData> NewRenderQ;
+        for (const auto& [SortKey, Index] : InSortKeys)
+        {
+            NewRenderQ.push_back(std::move(InRenderQ[Index]));
+        }
+        InRenderQ = std::move(NewRenderQ);
+    }
+
+    void SortAll()
+    {
+        Sort(OpaqueRenderQ, OpaqueSortKeys);
+        Sort(TranslucentRenderQ, TranslucentSortKeys);
     }
 
     bool IsOpaqueRQEmpty() const { return OpaqueRenderQ.empty(); }
@@ -58,4 +85,7 @@ private:
     TArray<FRenderData> TranslucentRenderQ;
     TArray<FRenderData> TextRenderQ;
     TArray<FRenderData> InstancingRenderQ;
+
+    TArray<std::pair<uint64, uint32>> OpaqueSortKeys;
+    TArray<std::pair<uint64, uint32>> TranslucentSortKeys;
 };

@@ -33,10 +33,12 @@ public:
   [[nodiscard]] FRenderPipelineDesc GetPipelineDesc() const { return desc; }
   void SetStencilRef(UINT InRef) { StencilRef = InRef; }
   [[nodiscard]] UINT GetStencilRef() const { return StencilRef; }
+  uint16 SortID = 0u;
 
 private:
   FRenderPipelineDesc desc;
-  UINT StencilRef = 0;
+  UINT StencilRef = 0u;
+  
 
   void Bind(ID3D11DeviceContext &Context) const;
 
