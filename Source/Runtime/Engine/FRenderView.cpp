@@ -30,6 +30,10 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
     FFrustum CullingFrustum = View.Camera->CreateFrustum();
 
+    // D3D 클립 변환을 ViewProj에 한 번만 곱해 둔다. 오브젝트마다 MVP에 곱하던 것과 결과는 같다.
+    // 이렇게 만든 MVP는 DrawRenderData에서 bConstantsInD3DClip=true로 그린다.
+    const FMatrix ViewProjD3D = View.ViewProj * FRenderer::GetUnrealClipToD3DClip();
+
     int CulledObjects = 0;
 
     for (auto& MeshComponent : Scene.GetRenderComponents())
@@ -65,7 +69,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         if (RenderDatas.empty()) continue;
 
         // 공통 Matrix 및 Color 계산 (루프 밖 1회 수행)
-        const FMatrix MVP = World * View.ViewProj;
+        const FMatrix MVP = World * ViewProjD3D;
 
         FVector FinalColorOverride = MeshComponent->GetColor();
         float   FinalColorOverrideAmount = MeshComponent->GetColorAmount();
@@ -428,7 +432,9 @@ void FRenderView::DrawRenderData(const FRenderData& Data)
     if (!Mesh || !Material) return;
 
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
-    Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount);
+    // 큐의 MVP는 CollectScenePrimitives에서 이미 D3D 클립 좌표계로 만들었다
+    Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount,
+        /*Slot*/ 0u, /*bApplyViewMode*/ true, /*bConstantsInD3DClip*/ true);
 }
 
 
