@@ -80,26 +80,33 @@ void UStaticMeshComponent::Update(float DeltaTime)
 TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
 {
     TArray<FRenderData> OutDatas;
+    AppendRenderDatas(Camera, OutDatas);
+    return OutDatas;
+}
 
+void UStaticMeshComponent::AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas)
+{
     if (!StaticMesh || !StaticMesh->StaticMeshAsset)
     {
-        return OutDatas;
+        return;
     }
 
     const FName CurrentMeshId = GetMeshID();
+    // UStaticMesh가 이미 들고 있는 메시 에셋. 렌더러가 MeshId 문자열로 다시 찾지 않도록 넘긴다.
+    FStaticMesh* const MeshAsset = StaticMesh->StaticMeshAsset.get();
 
     const auto& Sections = StaticMesh->StaticMeshAsset->Sections;
 
     if (!Sections.empty())
     {
         const size_t Count = std::min(StaticMesh->Materials.size(), Sections.size());
-        OutDatas.reserve(Count);
 
         for (size_t i = 0; i < Count; ++i)
         {
             FRenderData rdata;
             rdata.MeshId = CurrentMeshId;
-            rdata.MaterialId = GetMaterial(static_cast<int32>(i));
+            rdata.MeshPtr = MeshAsset;
+            FillMaterial(static_cast<int32>(i), rdata);
 
             rdata.startidx = Sections[i].FirstIndex;
             rdata.indicesCount = Sections[i].IndexCount;
@@ -116,7 +123,8 @@ TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
     {
         FRenderData rdata;
         rdata.MeshId = CurrentMeshId;
-        rdata.MaterialId = GetMaterial(0);
+        rdata.MeshPtr = MeshAsset;
+        FillMaterial(0, rdata);
 
         rdata.startidx = 0;
         rdata.indicesCount = -1; 
@@ -128,8 +136,6 @@ TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
 
         OutDatas.push_back(std::move(rdata));
     }
-
-    return OutDatas;
 }
 
 const FRenderData& UStaticMeshComponent::GetPureRenderData() const
@@ -154,6 +160,28 @@ void UStaticMeshComponent::SetMaterial(int32 Slot, const FName& InMaterialId)
     }
 
     OverrideMaterials[Slot] = InMaterialId;
+}
+
+void UStaticMeshComponent::FillMaterial(int32 Slot, FRenderData& OutData) const
+{
+    // 1) 컴포넌트 오버라이드: 이름만 넘기고 렌더러가 찾는다 (기존 경로)
+    if (Slot >= 0 && Slot < static_cast<int32>(OverrideMaterials.size()) && !OverrideMaterials[Slot].IsNone())
+    {
+        OutData.MaterialId = OverrideMaterials[Slot];
+        return;
+    }
+
+    // 2) 메시 슬롯: UStaticMesh가 연결해 둔 머티리얼 포인터를 넘긴다.
+    //    등록되지 않은 이름이면 포인터는 nullptr이고, 렌더러가 기존처럼 Simple로 대체한다.
+    if (StaticMesh && Slot >= 0 && Slot < StaticMesh->GetMaterialSlotCount())
+    {
+        OutData.MaterialPtr = StaticMesh->ResolveMaterialSlot(Slot, OutData.MaterialId);
+        return;
+    }
+
+    // 3) 슬롯이 없으면 기본 머티리얼
+    static const FName SimpleMaterialId("Simple");
+    OutData.MaterialId = SimpleMaterialId;
 }
 
 FName UStaticMeshComponent::GetMaterial(int32 Slot) const

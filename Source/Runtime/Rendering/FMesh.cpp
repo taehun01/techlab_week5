@@ -1,7 +1,18 @@
 #include "FMesh.h"
+#include "Runtime/Engine/FStaticMeshBVH.h"
 
 #include <d3d11.h>
 #include <wrl/client.h>
+
+const FStaticMeshBVH& FStaticMesh::GetBVH() const
+{
+	if (!BVH)
+	{
+		BVH = MakeShared<FStaticMeshBVH>();
+		BVH->Build(*this);
+	}
+	return *BVH;
+}
 
 void FStaticMesh::BindResources(ID3D11DeviceContext& Context) const
 {
@@ -9,7 +20,7 @@ void FStaticMesh::BindResources(ID3D11DeviceContext& Context) const
 
 	Context.IASetPrimitiveTopology(Topology);
 	Context.IASetVertexBuffers(0, 1, VertexBuffer.GetAddressOf(), &VertexStride, &Offset);
-	Context.IASetIndexBuffer(IndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	Context.IASetIndexBuffer(IndexBuffer.Get(), IndexFormat, 0);
 }
 
 bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Context, const FMeshDesc& Desc)
@@ -57,7 +68,8 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 
 	if (CpuIndexCount > 0 && Desc.IndexData)
 	{
-		if (IndexBuffer && Desc.IndexDataSize <= IndexBufferSize)
+		// 동적 메시는 32비트 인덱스를 그대로 올리므로 16비트 버퍼는 재사용하지 않는다.
+		if (IndexBuffer && IndexFormat == DXGI_FORMAT_R32_UINT && Desc.IndexDataSize <= IndexBufferSize)
 		{
 			Context->UpdateSubresource(IndexBuffer.Get(), 0, nullptr, Desc.IndexData, 0, 0);
 		}
@@ -74,6 +86,7 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 				return false;
 			}
 			IndexBufferSize = Desc.IndexDataSize;
+			IndexFormat = DXGI_FORMAT_R32_UINT;
 		}
 		IndexCount = CpuIndexCount;
 	}
@@ -100,6 +113,9 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 
 	// 바운딩 박스 갱신
 	LocalBounds = FAxisAlignedBoundingBox{ *this };
+
+	// 정점이 바뀌었으므로 다음 레이캐스트 때 BVH를 다시 빌드한다.
+	BVH.reset();
 	return true;
 }
 

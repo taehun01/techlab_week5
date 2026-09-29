@@ -18,6 +18,7 @@
 #include "Runtime/Rendering/FRenderer.h"
 #include "Runtime/Core/FStatRegistry.h"
 #include "Runtime/Core/Log.h"
+#include "ThirdParty/meshoptimizer/meshoptimizer.h"
 #include <cmath>
 #include <d3dcompiler.h>
 #include <numbers>
@@ -675,8 +676,9 @@ bool FRenderResourceLibrary::CreateUStaticMeshMap() {
         }
         else
         {
-            StaticMeshObj->Materials.push_back("Simple_Solid");
-            RegisterMeshMaterialDependency(Key, "Simple_Solid");
+            // "Simple_Solid"는 파이프라인 이름이라 머티리얼 조회가 매 프레임 실패했다. 실제 머티리얼 키는 "Simple"이다.
+            StaticMeshObj->Materials.push_back("Simple");
+            RegisterMeshMaterialDependency(Key, "Simple");
         }
 
         AllUStaticMeshMap[Key] = StaticMeshObj;
@@ -734,49 +736,33 @@ bool FRenderResourceLibrary::CreateCylinderMesh(float Height, uint32 SliceCount,
     const float HalfH = Height * 0.5f;
 
     const uint32 TopCenterIndex = static_cast<uint32>(Vertices.size());
-    Vertices.push_back({ 0.0f, 0.0f, HalfH, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 0.5f,
-                        0.0f, 0.0f, 1.0f });
+    Vertices.push_back({0.0f, 0.0f, HalfH, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 0.5f});
 
     const uint32 TopRingStart = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ TopRadius * std::cos(Theta),
-                            TopRadius * std::sin(Theta), HalfH, 0.0f, 0.0f, 1.0f,
-                            1.0f, 0.5f + 0.5f * std::cos(Theta),
-                            0.5f + 0.5f * std::sin(Theta), 0.0f, 0.0f, 1.0f });
+        Vertices.push_back({TopRadius * std::cos(Theta), TopRadius * std::sin(Theta), HalfH, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f + 0.5f * std::cos(Theta), 0.5f + 0.5f * std::sin(Theta)});
     }
 
     const uint32 BottomCenterIndex = static_cast<uint32>(Vertices.size());
-    Vertices.push_back({ 0.0f, 0.0f, -HalfH, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 0.5f,
-                        0.0f, 0.0f, -1.0f });
+    Vertices.push_back({0.0f, 0.0f, -HalfH, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f, 0.5f});
 
     const uint32 BottomRingStart = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ BottomRadius * std::cos(Theta),
-                            BottomRadius * std::sin(Theta), -HalfH, 0.0f, 0.0f,
-                            1.0f, 1.0f, 0.5f + 0.5f * std::cos(Theta),
-                            0.5f + 0.5f * std::sin(Theta), 0.0f, 0.0f, -1.0f });
+        Vertices.push_back({BottomRadius * std::cos(Theta), BottomRadius * std::sin(Theta), -HalfH, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f + 0.5f * std::cos(Theta), 0.5f + 0.5f * std::sin(Theta)});
     }
 
     const uint32 SideTopStart = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ TopRadius * std::cos(Theta),
-                            TopRadius * std::sin(Theta), HalfH, 0.0f, 0.0f, 1.0f,
-                            1.0f,
-                            static_cast<float>(i) / static_cast<float>(SliceCount),
-                            0.0f, std::cos(Theta), std::sin(Theta), 0.0f });
+        Vertices.push_back({TopRadius * std::cos(Theta), TopRadius * std::sin(Theta), HalfH, 0.0f, 0.0f, 1.0f, 1.0f, static_cast<float>(i) / static_cast<float>(SliceCount), 0.0f});
     }
 
     const uint32 SideBottomStart = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ BottomRadius * std::cos(Theta),
-                            BottomRadius * std::sin(Theta), -HalfH, 0.0f, 0.0f,
-                            1.0f, 1.0f,
-                            static_cast<float>(i) / static_cast<float>(SliceCount),
-                            1.0f, std::cos(Theta), std::sin(Theta), 0.0f });
+        Vertices.push_back({BottomRadius * std::cos(Theta), BottomRadius * std::sin(Theta), -HalfH, 0.0f, 0.0f, 1.0f, 1.0f, static_cast<float>(i) / static_cast<float>(SliceCount), 1.0f});
     }
 
     for (uint32 i = 0; i < SliceCount; ++i) {
@@ -842,8 +828,6 @@ bool FRenderResourceLibrary::CreateConeMesh() {
     const float HalfH = Height * 0.5f;
     const float SlantLen =
         std::sqrt(Height * Height + BottomRadius * BottomRadius);
-    const float NormalFactor = Height / SlantLen;
-    const float NormalZ = BottomRadius / SlantLen;
 
     // 옆면 정점 생성
     for (uint32 i = 0; i < SliceCount; ++i) {
@@ -851,30 +835,12 @@ bool FRenderResourceLibrary::CreateConeMesh() {
         const float NextTheta = static_cast<float>(i + 1) * DTheta;
         const float MidTheta = (Theta + NextTheta) * 0.5f;
 
-        const float ApexNx = NormalFactor * std::cos(MidTheta);
-        const float ApexNy = NormalFactor * std::sin(MidTheta);
-
         const uint32 ApexIdx = static_cast<uint32>(Vertices.size());
-        Vertices.push_back({ 0.0f, 0.0f, HalfH, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.0f,
-                            ApexNx, ApexNy, NormalZ });
-
-        const float BaseNx1 = NormalFactor * std::cos(Theta);
-        const float BaseNy1 = NormalFactor * std::sin(Theta);
+        Vertices.push_back({0.0f, 0.0f, HalfH, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.0f});
         const uint32 BaseIdx1 = static_cast<uint32>(Vertices.size());
-        Vertices.push_back({ BottomRadius * std::cos(Theta),
-                            BottomRadius * std::sin(Theta), -HalfH, 1.0f, 1.0f,
-                            1.0f, 1.0f,
-                            static_cast<float>(i) / static_cast<float>(SliceCount),
-                            1.0f, BaseNx1, BaseNy1, NormalZ });
-
-        const float BaseNx2 = NormalFactor * std::cos(NextTheta);
-        const float BaseNy2 = NormalFactor * std::sin(NextTheta);
+        Vertices.push_back({BottomRadius * std::cos(Theta), BottomRadius * std::sin(Theta), -HalfH, 1.0f, 1.0f, 1.0f, 1.0f, static_cast<float>(i) / static_cast<float>(SliceCount), 1.0f});
         const uint32 BaseIdx2 = static_cast<uint32>(Vertices.size());
-        Vertices.push_back(
-            { BottomRadius * std::cos(NextTheta), BottomRadius * std::sin(NextTheta),
-             -HalfH, 1.0f, 1.0f, 1.0f, 1.0f,
-             static_cast<float>(i + 1) / static_cast<float>(SliceCount), 1.0f,
-             BaseNx2, BaseNy2, NormalZ });
+        Vertices.push_back({ BottomRadius * std::cos(NextTheta), BottomRadius * std::sin(NextTheta), -HalfH, 1.0f, 1.0f, 1.0f, 1.0f, static_cast<float>(i + 1) / static_cast<float>(SliceCount), 1.0f });
 
         Indices.push_back(ApexIdx);
         Indices.push_back(BaseIdx2);
@@ -883,16 +849,13 @@ bool FRenderResourceLibrary::CreateConeMesh() {
 
     // 밑면 뚜껑 정점 생성
     const uint32 BottomCenterIndex = static_cast<uint32>(Vertices.size());
-    Vertices.push_back({ 0.0f, 0.0f, -HalfH, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.2f,
-                        0.0f, 0.0f, -1.0f });
+    Vertices.push_back({0.0f, 0.0f, -HalfH, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.2f});
 
     const uint32 BottomRingStart = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
         const float U = static_cast<float>(i) / static_cast<float>(SliceCount);
-        Vertices.push_back({ BottomRadius * std::cos(Theta),
-                            BottomRadius * std::sin(Theta), -HalfH, 1.0f, 1.0f,
-                            1.0f, 1.0f, U, 1.0f, 0.0f, 0.0f, -1.0f });
+        Vertices.push_back({BottomRadius * std::cos(Theta), BottomRadius * std::sin(Theta), -HalfH, 1.0f, 1.0f, 1.0f, 1.0f, U, 1.0f});
     }
 
     for (uint32 i = 0; i < SliceCount; ++i) {
@@ -934,8 +897,6 @@ bool FRenderResourceLibrary::CreateSpotlightConeMesh() {
     const float HalfH = Height * 0.5f;
     const float SlantLen =
         std::sqrt(Height * Height + BottomRadius * BottomRadius);
-    const float NormalFactor = Height / SlantLen;
-    const float NormalZ = BottomRadius / SlantLen;
 
     // 옆면 정점만 생성하고 밑면 뚜껑은 생성하지 않음
     for (uint32 i = 0; i < SliceCount; ++i) {
@@ -943,30 +904,12 @@ bool FRenderResourceLibrary::CreateSpotlightConeMesh() {
         const float NextTheta = static_cast<float>(i + 1) * DTheta;
         const float MidTheta = (Theta + NextTheta) * 0.5f;
 
-        const float ApexNx = NormalFactor * std::cos(MidTheta);
-        const float ApexNy = NormalFactor * std::sin(MidTheta);
-
         const uint32 ApexIdx = static_cast<uint32>(Vertices.size());
-        Vertices.push_back({ 0.0f, 0.0f, HalfH, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.0f,
-                            ApexNx, ApexNy, NormalZ });
-
-        const float BaseNx1 = NormalFactor * std::cos(Theta);
-        const float BaseNy1 = NormalFactor * std::sin(Theta);
+        Vertices.push_back({0.0f, 0.0f, HalfH, 1.0f, 1.0f, 1.0f, 1.0f, 0.5f, 0.0f});
         const uint32 BaseIdx1 = static_cast<uint32>(Vertices.size());
-        Vertices.push_back({ BottomRadius * std::cos(Theta),
-                            BottomRadius * std::sin(Theta), -HalfH, 1.0f, 1.0f,
-                            1.0f, 1.0f,
-                            static_cast<float>(i) / static_cast<float>(SliceCount),
-                            1.0f, BaseNx1, BaseNy1, NormalZ });
-
-        const float BaseNx2 = NormalFactor * std::cos(NextTheta);
-        const float BaseNy2 = NormalFactor * std::sin(NextTheta);
+        Vertices.push_back({BottomRadius * std::cos(Theta), BottomRadius * std::sin(Theta), -HalfH, 1.0f, 1.0f, 1.0f, 1.0f, static_cast<float>(i) / static_cast<float>(SliceCount), 1.0f});
         const uint32 BaseIdx2 = static_cast<uint32>(Vertices.size());
-        Vertices.push_back(
-            { BottomRadius * std::cos(NextTheta), BottomRadius * std::sin(NextTheta),
-             -HalfH, 1.0f, 1.0f, 1.0f, 1.0f,
-             static_cast<float>(i + 1) / static_cast<float>(SliceCount), 1.0f,
-             BaseNx2, BaseNy2, NormalZ });
+        Vertices.push_back({ BottomRadius * std::cos(NextTheta), BottomRadius * std::sin(NextTheta), -HalfH, 1.0f, 1.0f, 1.0f, 1.0f, static_cast<float>(i + 1) / static_cast<float>(SliceCount), 1.0f });
 
         Indices.push_back(ApexIdx);
         Indices.push_back(BaseIdx2);
@@ -1007,56 +950,43 @@ bool FRenderResourceLibrary::CreateArrowMesh() {
     Indices.reserve(SliceCount * 18);
 
     const uint32 ShaftBottomCenter = static_cast<uint32>(Vertices.size());
-    Vertices.push_back({ 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.5f,
-                        -1.0f, 0.0f, 0.0f });
+    Vertices.push_back({0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.5f});
 
     const uint32 ShaftBottomRing = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ 0.0f, ShaftRadius * std::cos(Theta),
-                            ShaftRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f,
-                            0.0f, 0.0f, -1.0f, 0.0f, 0.0f });
+        Vertices.push_back({0.0f, ShaftRadius * std::cos(Theta), ShaftRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f});
     }
 
     const uint32 ShaftSideBottom = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ 0.0f, ShaftRadius * std::cos(Theta),
-                            ShaftRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f,
-                            0.0f, 0.0f, 0.0f, std::cos(Theta), std::sin(Theta) });
+        Vertices.push_back({0.0f, ShaftRadius * std::cos(Theta), ShaftRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f});
     }
 
     const uint32 ShaftSideTop = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ ShaftLength, ShaftRadius * std::cos(Theta),
-                            ShaftRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f,
-                            1.0f, 0.0f, 0.0f, std::cos(Theta), std::sin(Theta) });
+        Vertices.push_back({ShaftLength, ShaftRadius * std::cos(Theta), ShaftRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f});
     }
 
     const uint32 HeadBaseCenter = static_cast<uint32>(Vertices.size());
-    Vertices.push_back({ ShaftLength, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f,
-                        0.5f, -1.0f, 0.0f, 0.0f });
+    Vertices.push_back({ShaftLength, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.5f});
 
     const uint32 HeadBaseRing = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ ShaftLength, HeadRadius * std::cos(Theta),
-                            HeadRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f,
-                            0.0f, 0.0f, -1.0f, 0.0f, 0.0f });
+        Vertices.push_back({ShaftLength, HeadRadius * std::cos(Theta), HeadRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f});
     }
 
     const uint32 HeadSideBase = static_cast<uint32>(Vertices.size());
     for (uint32 i = 0; i < SliceCount; ++i) {
         const float Theta = static_cast<float>(i) * DTheta;
-        Vertices.push_back({ ShaftLength, HeadRadius * std::cos(Theta),
-                            HeadRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f,
-                            0.0f, 0.0f, 0.0f, std::cos(Theta), std::sin(Theta) });
+        Vertices.push_back({ShaftLength, HeadRadius * std::cos(Theta), HeadRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f});
     }
 
     const uint32 HeadTip = static_cast<uint32>(Vertices.size());
-    Vertices.push_back({ ShaftLength + HeadLength, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-                        1.0f, 1.0f, 0.5f, 1.0f, 0.0f, 0.0f });
+    Vertices.push_back({ShaftLength + HeadLength, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.5f});
 
     for (uint32 i = 0; i < SliceCount; ++i) {
         const uint32 Next = (i + 1) % SliceCount;
@@ -1130,12 +1060,8 @@ bool FRenderResourceLibrary::CreateCircleMesh() {
         float InnerRadius = Radius - Width * 0.5f;
         float OuterRadius = Radius + Width * 0.5f;
 
-        Vertices.push_back({ 0.0f, InnerRadius * std::cos(Theta),
-                            InnerRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f,
-                            0.0f, 0.0f, 1.0f, 0.0f, 0.0f });
-        Vertices.push_back({ 0.0f, OuterRadius * std::cos(Theta),
-                            OuterRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f,
-                            1.0f, 1.0f, 1.0f, 0.0f, 0.0f });
+        Vertices.push_back({0.0f, InnerRadius * std::cos(Theta), InnerRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f});
+        Vertices.push_back({0.0f, OuterRadius * std::cos(Theta), OuterRadius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f});
 
         uint32 InnerCurrent = 2 * i;
         uint32 OuterCurrent = 2 * i + 1;
@@ -1191,12 +1117,8 @@ bool FRenderResourceLibrary::CreateRotationGizmoMesh() {
         float Theta = 2.0f * std::numbers::pi_v<float> *static_cast<float>(i) /
             static_cast<float>(SliceCount);
 
-        Vertices.push_back({ 0.0f, Radius * std::cos(Theta),
-                            Radius * std::sin(Theta), -1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-                            0.0f, -1.0f, 0.0f, 0.0f });
-        Vertices.push_back({ 0.0f, Radius * std::cos(Theta),
-                            Radius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-                            0.0f, 1.0f, 0.0f, 0.0f });
+        Vertices.push_back({0.0f, Radius * std::cos(Theta), Radius * std::sin(Theta), -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f});
+        Vertices.push_back({0.0f, Radius * std::cos(Theta), Radius * std::sin(Theta), 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f});
 
         if (i == 0)
             continue;
@@ -1267,7 +1189,7 @@ bool FRenderResourceLibrary::CreateSquareArrowMesh() {
         float ScaledY = v.y * ShaftRadius;
         float ScaledZ = v.z * ShaftRadius;
         Vertices.push_back({ ScaledX + ShaftLength * 0.5f, ScaledY, ScaledZ, v.r,
-                            v.g, v.b, v.a, v.u, v.v, v.nx, v.ny, v.nz });
+                            v.g, v.b, v.a, v.u, v.v});
     }
 
     for (const auto& Index : ColoredCubeIndices) {
@@ -1279,8 +1201,7 @@ bool FRenderResourceLibrary::CreateSquareArrowMesh() {
         float ScaledY = v.y * TipSize;
         float ScaledZ = v.z * TipSize;
         Vertices.push_back({ ScaledX + TipSize * 0.5f + ShaftLength, ScaledY,
-                            ScaledZ, v.r, v.g, v.b, v.a, v.u, v.v, v.nx, v.ny,
-                            v.nz });
+                            ScaledZ, v.r, v.g, v.b, v.a, v.u, v.v});
     }
 
     for (const auto& Index : ColoredCubeIndices) {
@@ -1310,14 +1231,10 @@ bool FRenderResourceLibrary::CreateGridMesh() {
     constexpr float HalfH = 10.0f;
 
     const TArray<FVertexData> Vertices = {
-        {-HalfW, -HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-         1.0f},
-        {HalfW, -HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f,
-         1.0f},
-        {HalfW, HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-         1.0f},
-        {-HalfW, HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-         1.0f},
+        {-HalfW, -HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f},
+        {HalfW, -HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f},
+        {HalfW, HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+        {-HalfW, HalfH, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
     };
     const TArray<uint32> Indices = { 0, 1, 2, 0, 2, 3 };
 
@@ -1391,11 +1308,10 @@ bool FRenderResourceLibrary::CreateRectMesh() {
 
     // 사각형 정점 배열
     const TArray<FVertexData> Vertices = {
-        {0.0f, -0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f},
-        {0.0f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f},
-        {0.0f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f},
-        {0.0f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 0.0f,
-         0.0f},
+        {0.0f, -0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f},
+        {0.0f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f},
+        {0.0f, 0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+        {0.0f, -0.5f, -0.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
     };
 
     // 양면 인덱스 배열
@@ -1701,7 +1617,7 @@ bool FRenderResourceLibrary::CreateObjMeshes()
         if (Decoder.LoadObj(ObjPath, BinaryPath, ModelData) == false)
         {
             UE_LOG_WARN("[OBJ Loader] 로딩 실패: %s", ObjPath.c_str());
-            
+
             continue;
         }
 
@@ -1710,6 +1626,33 @@ bool FRenderResourceLibrary::CreateObjMeshes()
         {
             CpuIndexCount = CpuIndexCount < Section.FirstIndex + Section.IndexCount ? Section.FirstIndex + Section.IndexCount : CpuIndexCount;
         }
+
+        // GPU 정점 캐시 재사용률을 높이도록 삼각형 순서를 재정렬한다(그려지는 결과는 같다).
+        // 섹션마다 따로 드로우하므로 섹션 인덱스 구간 안에서만 섞어 경계를 유지한다.
+        //if (!ModelData.Indices.empty())
+        //{
+        //    const size_t VertexCount = ModelData.Vertices.size();
+        //    const auto Before = meshopt_analyzeVertexCache(ModelData.Indices.data(), ModelData.Indices.size(), VertexCount, 16, 0, 0);
+
+        //    const auto OptimizeRange = [&](size_t FirstIndex, size_t IndexCount)
+        //    {
+        //        if (IndexCount < 3 || FirstIndex + IndexCount > ModelData.Indices.size()) return;
+        //        uint32* Range = ModelData.Indices.data() + FirstIndex;
+        //        meshopt_optimizeVertexCache(Range, Range, IndexCount, VertexCount);
+        //    };
+
+        //    if (ModelData.Sections.empty())
+        //    {
+        //        OptimizeRange(0, ModelData.Indices.size());
+        //    }
+        //    for (const FMeshSection& Section : ModelData.Sections)
+        //    {
+        //        OptimizeRange(Section.FirstIndex, Section.IndexCount);
+        //    }
+
+        //    const auto After = meshopt_analyzeVertexCache(ModelData.Indices.data(), ModelData.Indices.size(), VertexCount, 16, 0, 0);
+        //    UE_LOG("[OBJ Loader] 정점 캐시 최적화: %s ACMR %.3f -> %.3f", StemName.c_str(), Before.acmr, After.acmr);
+        //}
 
         FMeshDesc Desc
         {
@@ -1737,6 +1680,9 @@ bool FRenderResourceLibrary::CreateObjMeshes()
         StaticMesh->PathFileName = ObjFile.string();
         StaticMesh->MeshId = MeshKey;
         StaticMesh->Sections = std::move(ModelData.Sections);
+
+        // 첫 피킹 때 빌드 지연이 생기지 않도록 로드 시점에 BVH를 미리 빌드한다.
+        (void)StaticMesh->GetBVH();
 
         RegisterMesh(MeshKey, StaticMesh);
         UE_LOG("[OBJ Loader] 로드 완료: %s (정점: %u, 인덱스: %u, 섹션: %zu)",

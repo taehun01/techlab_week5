@@ -7,6 +7,8 @@
 #include "Runtime/Geometry/FRay.h"
 #include "Runtime/Math/FVector.h"
 
+struct FFrustum;
+
 struct FOctreeElement
 {
 	int32 ObjectIndex = -1; // InternalIndex
@@ -38,6 +40,8 @@ public:
 
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects) const;
 	void QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits) const;
+	// 바운드가 프러스텀과 겹치는 원소를 모은다. 프러스텀 밖의 노드는 통째로 건너뛴다.
+	void QueryFrustum(const FFrustum& Frustum, TArray<int32>& OutObjects) const;
 
 private:
 	struct FNode
@@ -66,5 +70,6 @@ private:
 	void Split(int32 NodeIndex);
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects, int32 NodeIndex) const;
 	void QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits, int32 NodeIndex) const;
+	void QueryFrustum(const FFrustum& Frustum, TArray<int32>& OutObjects, int32 NodeIndex) const;
 	void TryMerge(int32 NodeIndex);
 };

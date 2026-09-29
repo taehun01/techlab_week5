@@ -18,6 +18,8 @@
 #include <d3d11.h>
 #include <filesystem>
 #include <wrl/client.h>
+#include "ThirdParty/tracy/tracy/Tracy.hpp"
+#include "ThirdParty/tracy/tracy/TracyD3D11.hpp"
 #include <WICTextureLoader.h>
 
 class FTexture;
@@ -137,6 +139,9 @@ public:
 
     void ResetRenderState() { CurrentRenderState.Reset(); }
 
+    // Tracy GPU 구간 계측용 컨텍스트. TracyD3D11Zone(Renderer.GetGpuProfiler(), "이름")으로 쓴다.
+    [[nodiscard]] TracyD3D11Ctx GetGpuProfiler() const { return GpuProfiler; }
+
 private:
     bool InitializeDeviceAndSwapChain(HWND Window);
     bool InitializeBackBufferAndDepthStencil();
@@ -171,6 +176,7 @@ private:
 
     EViewModeIndex CurrentRenderMode = EViewModeIndex::VMI_Lit;
     FRenderState CurrentRenderState;
+    TracyD3D11Ctx GpuProfiler = nullptr;
 public:
     template <typename TConstants>
     void FlushLineBatch(
@@ -183,7 +189,18 @@ public:
         ResetRenderState();
     }
 
+    // 엔진(언리얼) 클립 좌표계 → D3D 클립 좌표계 변환 행렬.
+    // 오브젝트가 많은 경로는 ViewProj에 미리 곱해 두고 Draw에 bConstantsInD3DClip=true를 넘기면
+    // 오브젝트마다 하던 4x4 행렬 곱셈을 생략할 수 있다.
+    static const FMatrix& GetUnrealClipToD3DClip() {
+        static const FMatrix UnrealClipToD3DClip{
+            FVector{ 0.0f, 0.0f, 1.0f }, FVector{ 1.0f, 0.0f, 0.0f },
+            FVector{ 0.0f, 1.0f, 0.0f }, FVector{ 0.0f, 0.0f, 0.0f } };
+        return UnrealClipToD3DClip;
+    }
+
     // bApplyViewMode=false면 뷰모드(와이어프레임) 오버라이드를 건너뛴다
+    // bConstantsInD3DClip=true면 Constants의 MVP가 이미 D3D 클립 좌표계라 변환하지 않는다
     template <typename TConstants>
     void Draw(
         const FStaticMesh& InMesh,
@@ -192,12 +209,13 @@ public:
         int32 startidx = 0,
         int32 indicesCount = -1,
         uint32 Slot = 0,
-        bool bApplyViewMode = true
+        bool bApplyViewMode = true,
+        bool bConstantsInD3DClip = false
     )
     {
         TConstants LocalConstants = Constants;
         LocalConstants.MaterialDiffuse = InMaterial.GetDiffuseColor();
-        UpdateConstantBuffer(LocalConstants);
+        UpdateConstantBuffer(LocalConstants, bConstantsInD3DClip);
         if (Slot != 0u)
         {
             // b0 이외 슬롯 요청은 캐시 대상이 아니므로 매번 바인딩
@@ -210,7 +228,7 @@ public:
         }
 
         FRenderPipeline* Pipeline = InMaterial.Pipeline.get();
-        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) 
+        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe)
         {
             Pipeline = GetPipeline(FName("Simple_Wireframe")).get();
         }
@@ -261,23 +279,19 @@ private:
     }
 
     template <typename TConstants>
-    void UpdateConstantBuffer(const TConstants& Constants) {
+    void UpdateConstantBuffer(const TConstants& Constants, bool bAlreadyInD3DClip = false) {
         static_assert(sizeof(TConstants) <= ConstantBufferSize);
         static_assert(sizeof(TConstants) % 16 == 0);
 
         TConstants ShaderConstants = Constants;
-        if constexpr (requires { ShaderConstants.MVP; }) {
-            static const FMatrix UnrealClipToD3DClip{
-                FVector{ 0.0f, 0.0f, 1.0f }, FVector{ 1.0f, 0.0f, 0.0f },
-                FVector{ 0.0f, 1.0f, 0.0f }, FVector{ 0.0f, 0.0f, 0.0f } };
-            ShaderConstants.MVP *= UnrealClipToD3DClip;
-        }
+        if (!bAlreadyInD3DClip) {
+            if constexpr (requires { ShaderConstants.MVP; }) {
+                ShaderConstants.MVP *= GetUnrealClipToD3DClip();
+            }
 
-        if constexpr (requires { ShaderConstants.VP; }) {
-            static const FMatrix UnrealClipToD3DClip{
-                FVector{ 0.0f, 0.0f, 1.0f }, FVector{ 1.0f, 0.0f, 0.0f },
-                FVector{ 0.0f, 1.0f, 0.0f }, FVector{ 0.0f, 0.0f, 0.0f } };
-            ShaderConstants.VP *= UnrealClipToD3DClip;
+            if constexpr (requires { ShaderConstants.VP; }) {
+                ShaderConstants.VP *= GetUnrealClipToD3DClip();
+            }
         }
 
         D3D11_MAPPED_SUBRESOURCE Mapped{};

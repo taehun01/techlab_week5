@@ -8,8 +8,8 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include "Runtime/Core/TArray.h"
+#include "Runtime/Core/PointerTypes.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
-
 // LOD 생성 개수
 constexpr uint32 MAX_MESH_LOD = 3u; 
 
@@ -42,6 +42,7 @@ struct FMeshSection
 };
 
 class FRenderer;
+class FStaticMeshBVH;
 
 // 정적 메시 클래스
 class FStaticMesh final
@@ -57,6 +58,9 @@ public:
 	[[nodiscard]] const FAxisAlignedBoundingBox& GetLocalBounds() const { return LocalBounds; }
 	[[nodiscard]] const TArray<FMeshSection>& GetSections() const { return Sections; }
 	[[nodiscard]] bool HasSections() const { return !Sections.empty(); }
+
+	// 삼각형 레이캐스트용 BVH. 처음 요청할 때 빌드하고 UpdateBuffers로 정점이 바뀌면 다시 빌드한다.
+	[[nodiscard]] const FStaticMeshBVH& GetBVH() const;
 
 	// 식별자 및 텍스처 접근자
 	[[nodiscard]] const FName& GetMeshId() const { return MeshId; }
@@ -92,6 +96,10 @@ private:
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> IndexBuffer;
 	uint32 IndexBufferSize = 0u;
+	// 정적 메시는 정점이 65536개 이하면 16비트 인덱스로 올려 인덱스 대역폭을 절반으로 줄인다.
+	// CPU 측 Indices는 항상 32비트다.
+	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R32_UINT;
+
 	// LOD0 인덱스 카운트
 	uint32 IndexCount = 0u;
 	// LOD 포함 전체 인덱스 카운드 
@@ -102,6 +110,8 @@ private:
 
 	D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	FAxisAlignedBoundingBox LocalBounds{};
+
+	mutable TSharedPtr<FStaticMeshBVH> BVH;
 };
 
 struct FMeshDesc

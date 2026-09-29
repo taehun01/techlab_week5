@@ -15,6 +15,7 @@
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
 #include "Runtime/Math/Random.h"
 #include "Runtime/CoreUObject/FGarbageCollector.h"
+#include "ThirdParty/tracy/tracy/Tracy.hpp"
 #include <numbers>
 
 
@@ -59,6 +60,7 @@ void FEditor::Process() {
     }
     
   if (SceneManager && SceneManager->CurrentScene) {
+    ZoneScopedN("Scene Update");
     SceneManager->CurrentScene->Update(FTimeManager::Get().GetDeltaTime());
   }
 
@@ -69,6 +71,7 @@ void FEditor::Process() {
   // 이번 프레임의 트랜스폼/메시 변경이 모두 끝났으므로 옥트리에 반영한다.
   // 클릭 시점에는 반영할 것이 남지 않아 피킹 지연에 갱신 비용이 섞이지 않는다.
   if (SceneManager && SceneManager->CurrentScene) {
+    ZoneScopedN("FlushSceneOctree");
     SceneManager->CurrentScene->FlushSceneOctree();
   }
 

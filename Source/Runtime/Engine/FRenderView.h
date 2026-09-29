@@ -23,6 +23,20 @@ class FRenderView final {
 	FRenderer& Renderer;
 	FRenderQueue RenderQueue;
 
+	// CollectScenePrimitives에서 컴포넌트별 FRenderData를 받는 작업 배열.
+	// 매 컴포넌트마다 clear만 하고 용량은 유지해 오브젝트별 할당/해제를 없앤다.
+	TArray<FRenderData> ComponentRenderDatas;
+
+	// CollectScenePrimitives의 병렬 단계 결과 (컴포넌트별, 매 프레임 새로 계산).
+	struct FPrimitiveCullResult
+	{
+		FMatrix World;
+		uint32 QuantizedDistance = 0;
+		bool bVisible = false;
+	};
+	// 컴포넌트별 계산 결과. 매 프레임 크기만 맞추고 용량은 유지한다.
+	TArray<FPrimitiveCullResult> CullResults;
+
 	// 개별 렌더 데이터 드로우
 	void DrawRenderData(const FRenderData& Data);
 
