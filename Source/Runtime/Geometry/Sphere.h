@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Runtime/Rendering/Vertices.h"
 #include <vector>
@@ -24,14 +24,10 @@ inline std::vector<FVertexData> CreateSphereVertices(float radius = 0.5f, int sl
 		float cg = 1;
 		float cb = 1;
 
-		float nx = x / radius;
-		float ny = y / radius;
-		float nz = z / radius;
-
 		float u = theta / (2.0f * pi);
 		float v = phi / pi;
 
-		return { x, y, z, cr, cg, cb, 1.0f, u, v, nx, ny, nz };
+		return { x, y, z, cr, cg, cb, 1.0f, u, v };
 	};
 
 	for (int i = 0; i < stacks; ++i)

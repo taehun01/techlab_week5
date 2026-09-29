@@ -41,12 +41,12 @@ void FLineBatcher::DrawLine(const FVector& Start, const FVector& End, const FVec
 	LineVertices.push_back(FVertexData{
 		Start.X, Start.Y, Start.Z,
 		Color.X, Color.Y, Color.Z, Color.W,
-		0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+		0.0f, 0.0f
 	});
 	LineVertices.push_back(FVertexData{
 		End.X, End.Y, End.Z,
 		Color.X, Color.Y, Color.Z, Color.W,
-		0.0f, 0.0f, 0.0f, 0.0f, 0.0f
+		0.0f, 0.0f
 	});
 }
 

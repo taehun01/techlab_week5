@@ -961,9 +961,6 @@ FVertexData FObjDecoder::MakeVertex(const FObjInfo& Info, const FCornerKey& Key,
 		if (Key.NormalKind == EXPLICIT)
 		{
 			const FVector& Normal = Info.NormalList[Key.NormalId];
-			Vertex.nx = Normal.X;
-			Vertex.ny = Normal.Y;
-			Vertex.nz = Normal.Z;
 		}
 		else if (Key.NormalKind == SMOOTH)
 		{
@@ -979,9 +976,6 @@ FVertexData FObjDecoder::MakeVertex(const FObjInfo& Info, const FCornerKey& Key,
 				if (NormalVector.SizeSquared() > 1e-12f) // 선이거나 면이 마주봐서 0이된 경우 나누는거 방지
 				{
 					NormalVector /= NormalVector.Size();
-					Vertex.nx = NormalVector.X;
-					Vertex.ny = NormalVector.Y;
-					Vertex.nz = NormalVector.Z;
 				}
 			}
 		}
@@ -992,9 +986,6 @@ FVertexData FObjDecoder::MakeVertex(const FObjInfo& Info, const FCornerKey& Key,
 			if (NormalVector.SizeSquared() > 1e-12f)
 			{
 				NormalVector /= NormalVector.Size();
-				Vertex.nx = NormalVector.X;
-				Vertex.ny = NormalVector.Y;
-				Vertex.nz = NormalVector.Z;
 			}
 		}
 
@@ -1195,8 +1186,6 @@ bool FObjDecoder::CookStaticMesh(const FObjInfo& Info, FObjModelData& Out)
 	// 정점별 탄젠트 및 바이탄젠트 누적 계산
 	for (auto& V : Out.Vertices)
 	{
-		V.tx = 0.0f; V.ty = 0.0f; V.tz = 0.0f;
-		V.bx = 0.0f; V.by = 0.0f; V.bz = 0.0f;
 	}
 
 	for (size_t i = 0; i + 2 < Out.Indices.size(); i += 3)
@@ -1227,33 +1216,12 @@ bool FObjDecoder::CookStaticMesh(const FObjInfo& Info, FObjModelData& Out)
 			const float invDet = 1.0f / det;
 			const FVector tangent = (edge1 * dv2 - edge2 * dv1) * invDet;
 			const FVector bitangent = (edge2 * du1 - edge1 * du2) * invDet;
-
-			v0.tx += tangent.X; v0.ty += tangent.Y; v0.tz += tangent.Z;
-			v1.tx += tangent.X; v1.ty += tangent.Y; v1.tz += tangent.Z;
-			v2.tx += tangent.X; v2.ty += tangent.Y; v2.tz += tangent.Z;
-
-			v0.bx += bitangent.X; v0.by += bitangent.Y; v0.bz += bitangent.Z;
-			v1.bx += bitangent.X; v1.by += bitangent.Y; v1.bz += bitangent.Z;
-			v2.bx += bitangent.X; v2.by += bitangent.Y; v2.bz += bitangent.Z;
 		}
 	}
 
 	// 정점별 직교화 및 정규화
 	for (auto& v : Out.Vertices)
 	{
-		FVector N(v.nx, v.ny, v.nz);
-		FVector T(v.tx, v.ty, v.tz);
-		FVector B(v.bx, v.by, v.bz);
-
-		T = T - N * N.Dot(T);
-		const float tLen = T.Size();
-		T = (tLen > 1e-6f) ? (T / tLen) : FVector(1.0f, 0.0f, 0.0f);
-
-		const float bLen = B.Size();
-		B = (bLen > 1e-6f) ? (B / bLen) : N.Cross(T);
-
-		v.tx = T.X; v.ty = T.Y; v.tz = T.Z;
-		v.bx = B.X; v.by = B.Y; v.bz = B.Z;
 	}
 
 	return (!Out.Indices.empty());

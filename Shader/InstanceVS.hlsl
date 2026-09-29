@@ -6,7 +6,6 @@ struct VS_INPUT
     float3 Position : POSITION;
     float4 Color : COLOR;
     float2 UV : TEXCOORD0;
-    float3 Normal : NORMAL;
 
     // 인스턴스 데이터
     row_major float4x4 InstanceWorld : INSTANCE_WORLD;
@@ -20,7 +19,6 @@ struct PS_INPUT
     float4 Position : SV_Position;
     float4 Color : COLOR;
     float2 UV : TEXCOORD0;
-    float3 Normal : NORMAL;
 };
 
 PS_INPUT MainVS(VS_INPUT Input)
@@ -37,9 +35,6 @@ PS_INPUT MainVS(VS_INPUT Input)
 
     //UV 변환
     Output.UV = Input.UV * Input.InstanceUVScale + Input.InstanceUVOffset;
-
-    // 월드 노멀 변환
-    Output.Normal = mul(float4(Input.Normal, 0.0f), Input.InstanceWorld).xyz;
 
     return Output;
 }

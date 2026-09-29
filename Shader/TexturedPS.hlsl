@@ -10,9 +10,6 @@ struct PS_INPUT
     float4 Position : SV_Position;
     float4 Color : COLOR;
     float2 UV : TEXCOORD0;
-    float3 Normal : NORMAL;
-    float3 Tangent : TANGENT;
-    float3 Bitangent : BINORMAL;
 };
 
 float4 MainPS(PS_INPUT Input) : SV_Target

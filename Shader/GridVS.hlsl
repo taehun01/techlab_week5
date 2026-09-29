@@ -12,7 +12,6 @@ struct VS_INPUT
     float3 Position : POSITION;
     float4 Color : COLOR;
     float2 UV : TEXCOORD0;
-    float3 Normal : NORMAL;
 };
 
 struct PS_INPUT

@@ -194,16 +194,7 @@ bool FBinArchive::SerializeValue(const FVertexData& Value)
         && SerializeFloat(Value.b)
         && SerializeFloat(Value.a)
         && SerializeFloat(Value.u)
-        && SerializeFloat(Value.v)
-        && SerializeFloat(Value.nx)
-        && SerializeFloat(Value.ny)
-        && SerializeFloat(Value.nz)
-        && SerializeFloat(Value.tx)
-        && SerializeFloat(Value.ty)
-        && SerializeFloat(Value.tz)
-        && SerializeFloat(Value.bx)
-        && SerializeFloat(Value.by)
-        && SerializeFloat(Value.bz);
+        && SerializeFloat(Value.v);
 }
 
 bool FBinArchive::DeserializeValue(FVertexData& Value)
@@ -216,16 +207,7 @@ bool FBinArchive::DeserializeValue(FVertexData& Value)
         && DeserializeFloat(Value.b)
         && DeserializeFloat(Value.a)
         && DeserializeFloat(Value.u)
-        && DeserializeFloat(Value.v)
-        && DeserializeFloat(Value.nx)
-        && DeserializeFloat(Value.ny)
-        && DeserializeFloat(Value.nz)
-        && DeserializeFloat(Value.tx)
-        && DeserializeFloat(Value.ty)
-        && DeserializeFloat(Value.tz)
-        && DeserializeFloat(Value.bx)
-        && DeserializeFloat(Value.by)
-        && DeserializeFloat(Value.bz);
+        && DeserializeFloat(Value.v);
 }
 
 bool FBinArchive::SerializeValue(const FMeshSection& Value)
@@ -394,9 +376,6 @@ bool FBinArchive::ValidateObjModel(const FObjModelData& Model)
             Vertex.x, Vertex.y, Vertex.z,
             Vertex.r, Vertex.g, Vertex.b, Vertex.a,
             Vertex.u, Vertex.v,
-            Vertex.nx, Vertex.ny, Vertex.nz,
-            Vertex.tx, Vertex.ty, Vertex.tz,
-            Vertex.bx, Vertex.by, Vertex.bz
         };
 
         for (float Field : Fields)
