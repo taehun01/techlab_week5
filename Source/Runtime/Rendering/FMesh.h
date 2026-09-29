@@ -8,9 +8,11 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include "Runtime/Core/TArray.h"
+#include "Runtime/Core/PointerTypes.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 
 class FRenderer;
+class FStaticMeshBVH;
 
 // 인덱스 버퍼 구간 분할 및 렌더링 정보
 struct FMeshSection
@@ -40,6 +42,9 @@ public:
 	[[nodiscard]] const FAxisAlignedBoundingBox& GetLocalBounds() const { return LocalBounds; }
 	[[nodiscard]] const TArray<FMeshSection>& GetSections() const { return Sections; }
 	[[nodiscard]] bool HasSections() const { return !Sections.empty(); }
+
+	// 삼각형 레이캐스트용 BVH. 처음 요청할 때 빌드하고 UpdateBuffers로 정점이 바뀌면 다시 빌드한다.
+	[[nodiscard]] const FStaticMeshBVH& GetBVH() const;
 
 	// 식별자 및 텍스처 접근자
 	[[nodiscard]] const FName& GetMeshId() const { return MeshId; }
@@ -82,6 +87,8 @@ private:
 
 	D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	FAxisAlignedBoundingBox LocalBounds{};
+
+	mutable TSharedPtr<FStaticMeshBVH> BVH;
 };
 
 struct FMeshDesc

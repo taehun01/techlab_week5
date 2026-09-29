@@ -1731,6 +1731,9 @@ bool FRenderResourceLibrary::CreateObjMeshes()
         StaticMesh->MeshId = MeshKey;
         StaticMesh->Sections = std::move(ModelData.Sections);
 
+        // 첫 피킹 때 빌드 지연이 생기지 않도록 로드 시점에 BVH를 미리 빌드한다.
+        (void)StaticMesh->GetBVH();
+
         RegisterMesh(MeshKey, StaticMesh);
         UE_LOG("[OBJ Loader] 로드 완료: %s (정점: %u, 인덱스: %u, 섹션: %zu)",
             StemName.c_str(), ModelData.Vertices.size(),

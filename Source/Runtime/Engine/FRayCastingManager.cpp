@@ -7,6 +7,7 @@
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/CoreUObject/UMeshComponent.h"
 #include "Runtime/Engine/FSceneOctree.h"
+#include "Runtime/Engine/FStaticMeshBVH.h"
 #include "Runtime/Core/Log.h"
 #include <Runtime\Core\TArray.h>
 #include "../Geometry/FAxisAlignedBoundingBox.h"
@@ -143,70 +144,13 @@ bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBo
 
 bool FRayCastingManager::RayIntersectsMesh(const FRay& Ray, const FStaticMesh& Mesh, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint)
 {
-	const auto& Positions = Mesh.GetPositions();
-	const auto& Indices = Mesh.GetIndices();
-
-	if (Positions.size() < 3)
-	{
-		return false;
-	}
-	
-	// Ray를 Object 좌표계로 변환
-	FMatrix InvM;
-	if (!ModelMatrix.Inverse(InvM))
+	if (Mesh.GetPositions().size() < 3)
 	{
 		return false;
 	}
 
-	const FVector ObjectOrigin = InvM.TransformPointRow(Ray.Origin);
-	const FVector ObjectDirection = InvM.TransformPointRow(Ray.Direction, 0.0f); // 1.0은 점을 나타내므로 0.0으로 하여 벡터로 유지
-	const FRay ObjectRay{ ObjectOrigin, ObjectDirection };
-
-	FAxisAlignedBoundingBox AABB = Mesh.GetLocalBounds();
-	if (!RayIntersectsAABB(ObjectRay, AABB))
-	{
-		return false;
-	}
-
-	const uint32 elementCount = Mesh.HasIndices()
-		? static_cast<uint32>(Indices.size())
-		: static_cast<uint32>(Positions.size());
-
-	float ClosestHit = (std::numeric_limits<float>::max)();
-	FVector ClosestImpactPoint;
-	bool bHit = false;
-	for (uint32 i = 0; i + 2 < elementCount; i += 3)
-	{
-		const uint32 i0 = Mesh.HasIndices() ? Indices[i] : i;
-		const uint32 i1 = Mesh.HasIndices() ? Indices[i + 1] : i + 1;
-		const uint32 i2 = Mesh.HasIndices() ? Indices[i + 2] : i + 2;
-
-		// 잘못된 인덱스 방어
-		if (i0 >= Positions.size() ||
-			i1 >= Positions.size() ||
-			i2 >= Positions.size())
-		{
-			continue;
-		}
-
-		FVector A = Positions[i0];
-		FVector B = Positions[i1];
-		FVector C = Positions[i2];
-
-		float HitT = 0.0f;
-		if (RayIntersectsTriangle(ObjectRay, A, B, C, HitT) &&
-			HitT < ClosestHit)
-		{
-			ClosestHit = HitT;
-			ClosestImpactPoint = Ray.Origin + Ray.Direction * HitT;
-			bHit = true;
-		}
-	}
-
-	OutDistance = ClosestHit;
-	OutImpactPoint = ClosestImpactPoint;
-	
-	return bHit;
+	// BVH 루트 바운드가 메시 로컬 AABB와 같으므로 별도의 AABB 사전 검사는 필요 없다.
+	return Mesh.GetBVH().Raycast(Ray, ModelMatrix, OutDistance, OutImpactPoint);
 }
 
 bool FRayCastingManager::RayIntersectsTriangle(

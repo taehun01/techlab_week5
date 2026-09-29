@@ -1,7 +1,18 @@
 #include "FMesh.h"
+#include "Runtime/Engine/FStaticMeshBVH.h"
 
 #include <d3d11.h>
 #include <wrl/client.h>
+
+const FStaticMeshBVH& FStaticMesh::GetBVH() const
+{
+	if (!BVH)
+	{
+		BVH = MakeShared<FStaticMeshBVH>();
+		BVH->Build(*this);
+	}
+	return *BVH;
+}
 
 void FStaticMesh::BindResources(ID3D11DeviceContext& Context) const
 {
@@ -98,6 +109,9 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 
 	// 바운딩 박스 갱신
 	LocalBounds = FAxisAlignedBoundingBox{ *this };
+
+	// 정점이 바뀌었으므로 다음 레이캐스트 때 BVH를 다시 빌드한다.
+	BVH.reset();
 	return true;
 }
 
