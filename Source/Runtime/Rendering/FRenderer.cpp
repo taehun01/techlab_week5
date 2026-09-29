@@ -129,7 +129,8 @@ TSharedPtr<FStaticMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
       Desc.VertexStride == 0) {
     return nullptr;
   }
-  if (Desc.IndexCount > 0 && (!Desc.IndexData || Desc.IndexDataSize == 0)) {
+  uint32 CpuIndexCount = Desc.CpuIndexCount > 0 ? Desc.CpuIndexCount : Desc.IndexCount;
+  if (CpuIndexCount > 0 && (!Desc.IndexData || Desc.IndexDataSize == 0)) {
     return nullptr;
   }
 
@@ -153,7 +154,7 @@ TSharedPtr<FStaticMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
   Mesh->VertexCount = Desc.VertexCount;
   Mesh->VertexStride = Desc.VertexStride;
 
-  if (Desc.IndexCount > 0 && Desc.IndexData) {
+  if (CpuIndexCount > 0 && Desc.IndexData) {
     D3D11_BUFFER_DESC IndexBufferDesc = {
         .ByteWidth = Desc.IndexDataSize,
         .Usage = D3D11_USAGE_DEFAULT,
@@ -170,7 +171,7 @@ TSharedPtr<FStaticMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
       return nullptr;
     }
   }
-  Mesh->IndexCount = Desc.IndexCount;
+  Mesh->IndexCount = CpuIndexCount;
 
   const auto *vertices = static_cast<const FVertexData *>(Desc.VertexData);
 
@@ -180,9 +181,9 @@ TSharedPtr<FStaticMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
         FVector{vertices[i].x, vertices[i].y, vertices[i].z});
   }
 
-  if (Desc.IndexCount > 0) {
+  if (CpuIndexCount > 0) {
     const auto *indices = static_cast<const uint32 *>(Desc.IndexData);
-    Mesh->Indices.assign(indices, indices + Desc.IndexCount);
+    Mesh->Indices.assign(indices, indices + CpuIndexCount);
   }
 
   Mesh->Topology = Desc.bIsLine ? D3D11_PRIMITIVE_TOPOLOGY_LINELIST

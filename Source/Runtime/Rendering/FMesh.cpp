@@ -53,7 +53,9 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 	VertexStride = Desc.VertexStride;
 
 	// 인덱스 버퍼 갱신
-	if (Desc.IndexCount > 0 && Desc.IndexData)
+	uint32 CpuIndexCount = Desc.CpuIndexCount > 0 ? Desc.CpuIndexCount : Desc.IndexCount;
+
+	if (CpuIndexCount > 0 && Desc.IndexData)
 	{
 		if (IndexBuffer && Desc.IndexDataSize <= IndexBufferSize)
 		{
@@ -73,7 +75,7 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 			}
 			IndexBufferSize = Desc.IndexDataSize;
 		}
-		IndexCount = Desc.IndexCount;
+		IndexCount = CpuIndexCount;
 	}
 	else
 	{
@@ -90,10 +92,10 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 	}
 
 	Indices.clear();
-	if (Desc.IndexCount > 0 && Desc.IndexData)
+	if (CpuIndexCount > 0 && Desc.IndexData)
 	{
 		const auto* indices = static_cast<const uint32*>(Desc.IndexData);
-		Indices.assign(indices, indices + Desc.IndexCount);
+		Indices.assign(indices, indices + CpuIndexCount);
 	}
 
 	// 바운딩 박스 갱신

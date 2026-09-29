@@ -18,6 +18,8 @@
 #include <stdexcept>
 #include <unordered_map>
 
+#include "Source/ThirdParty/meshoptimizer/meshoptimizer.h"
+
 	// 에셋 폴더는 실행 파일 기준으로 잡는다.
 std::filesystem::path FObjDecoder::GetAssetDir()
 {
@@ -1471,6 +1473,12 @@ bool FObjDecoder::LoadObj(const FString& ObjPath, const FString& BinaryPath, FOb
 		{
 			return false;
 		}
+
+		// Generate LODs
+		if (BuildLods(Loaded, FLodSettings{}) == false)
+		{
+			UE_LOG_WARN("[OBJ Cache] LOD 빌드 실패: %s", BinaryPath.c_str());
+		}
 			
         Loaded.bIsValid = true;
         if (SaveObjModelBinary(BinaryPath, Loaded) == false)
@@ -1488,4 +1496,73 @@ bool FObjDecoder::LoadObj(const FString& ObjPath, const FString& BinaryPath, FOb
 const TArray<FObjMaterialInfo>& FObjDecoder::GetMaterials() const
 {
 	return CachedMaterials;
+}
+
+// MAX_MESH_LOD 만큼 Lod를 만든다
+bool FObjDecoder::BuildLods(FObjModelData& Model, const FLodSettings& Setting)
+{
+	const float Scale = meshopt_simplifyScale(&Model.Vertices[0].x, Model.Vertices.size(), sizeof(FVertexData));
+
+	// 섹션마다 원본 인덱스 정보를 Lods[0]에 넣기
+	for (FMeshSection& Section : Model.Sections)
+	{
+		// LOD0 최적화
+		uint32* Begin = Model.Indices.data() + Section.FirstIndex;
+		meshopt_optimizeVertexCache(Begin, Begin, Section.IndexCount, Model.Vertices.size());
+		Section.Lods[0] = { Section.FirstIndex, Section.IndexCount };
+	}
+	UE_LOG("LOD%u 삼각형 개수: %u", 0, Model.Indices.size() / 3)
+
+	for (uint32 Lod = 1; Lod < MAX_MESH_LOD; ++Lod)
+	{
+		uint32 TotalIndices = 0u;
+		for (FMeshSection& Section : Model.Sections)
+		{
+			uint32 IndexCount = Section.IndexCount;
+			uint32 PrevIndexCount = Section.Lods[Lod - 1].IndexCount;
+			uint32 TargetIndexCount = static_cast<uint32>(IndexCount * Setting.Ratios[Lod]);
+			TargetIndexCount -= TargetIndexCount % 3;
+			TargetIndexCount = TargetIndexCount >= 3 ? TargetIndexCount : 3;
+
+			float OutError = 0.f;
+			TArray<uint32> OutIndices;
+			uint32 Result = SimplifySection(Model, Model.Indices.data() + Section.FirstIndex, IndexCount, TargetIndexCount, Setting.TargetError[Lod], OutIndices, OutError, Setting);
+			if (Result <= 0 || Result >= PrevIndexCount) // LOD 생성 실패
+			{
+				Section.Lods[Lod] = Section.Lods[Lod - 1];
+
+				Section.LodErrors[Lod] = Section.LodErrors[Lod - 1];
+			}
+			else // LOD 생성 성공
+			{
+				meshopt_optimizeVertexCache(OutIndices.data(), OutIndices.data(), OutIndices.size(), Model.Vertices.size());
+
+				Section.Lods[Lod] = { static_cast<uint32>(Model.Indices.size()), static_cast<uint32>(OutIndices.size())};
+
+				Section.LodErrors[Lod] = OutError * Scale;
+
+				Model.Indices.insert(Model.Indices.end(), OutIndices.begin(), OutIndices.end());
+			}
+			TotalIndices += Section.Lods[Lod].IndexCount;
+
+			Section.LodCount = MAX_MESH_LOD;
+		}
+		UE_LOG("LOD%u 삼각형 개수: %u", Lod, TotalIndices / 3);
+	}
+	return true;
+}
+
+uint32 FObjDecoder::SimplifySection(const FObjModelData& Model, const uint32* SrcIndices, uint32 SrcCount, uint32 TargetCount, float TargetError, TArray<uint32>& OutIndices, float& OutError, const FLodSettings& Setting)
+{
+	TArray<uint32> Output(SrcCount);
+	uint32 Result = static_cast<uint32>(meshopt_simplify(Output.data(), SrcIndices, SrcCount, &Model.Vertices[0].x, Model.Vertices.size(), sizeof(FVertexData), TargetCount, TargetError, 0, &OutError));
+
+	if (Result > TargetCount * Setting.SloppyFallbackFactor)
+	{
+		Result = static_cast<uint32>(meshopt_simplifySloppy(Output.data(), SrcIndices, SrcCount, &Model.Vertices[0].x, Model.Vertices.size(), sizeof(FVertexData), nullptr, TargetCount, TargetError, &OutError));
+	}
+
+	Output.resize(Result);
+	OutIndices = std::move(Output);
+	return static_cast<uint32>(Result);
 }

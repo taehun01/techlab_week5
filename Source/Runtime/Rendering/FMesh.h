@@ -10,13 +10,22 @@
 #include "Runtime/Core/TArray.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
 
-class FRenderer;
+// LOD 생성 개수
+constexpr uint32 MAX_MESH_LOD = 3u; 
+
+// 각 인덱스가 어느 LOD에 속하는지 
+struct FMeshLODRange
+{
+	uint32 FirstIndex = 0u;
+	uint32 IndexCount = 0u;
+};
 
 // 인덱스 버퍼 구간 분할 및 렌더링 정보
 struct FMeshSection
 {
-	uint32 FirstIndex = 0;
-	uint32 IndexCount = 0;
+	// LOD0
+	uint32 FirstIndex = 0u;
+	uint32 IndexCount = 0u;
 
 	float Opacity = 1.0f;
 	bool bIsAlpha = false;
@@ -24,7 +33,15 @@ struct FMeshSection
 	FString MaterialName;
 
 	FAxisAlignedBoundingBox LocalBounds;
+
+	// LOD1~
+	FMeshLODRange Lods[MAX_MESH_LOD];
+	float LodErrors[MAX_MESH_LOD] = {};
+	uint32 LodCount = 1u;
+
 };
+
+class FRenderer;
 
 // 정적 메시 클래스
 class FStaticMesh final
@@ -74,8 +91,11 @@ private:
 	uint32 VertexBufferSize = 0u;
 
 	Microsoft::WRL::ComPtr<ID3D11Buffer> IndexBuffer;
-	uint32 IndexCount = 0u;
 	uint32 IndexBufferSize = 0u;
+	// LOD0 인덱스 카운트
+	uint32 IndexCount = 0u;
+	// LOD 포함 전체 인덱스 카운드 
+	uint32 TotalIndexCount = 0u;
 
 	TArray<FVector> Positions;
 	TArray<uint32> Indices;
@@ -93,7 +113,8 @@ struct FMeshDesc
 
 	const void* IndexData = nullptr;
 	uint32 IndexDataSize = 0u;
-	uint32 IndexCount = 0u;
+	uint32 IndexCount = 0u; // LOD index까지 모두 포함된 인덱스 카운트
+	uint32 CpuIndexCount = 0u; // LOD 제외한 원본 인덱스 카운트. picking이나 mesh에서 cpu 계산 시 사용
 
 	bool bIsLine = false;
 };

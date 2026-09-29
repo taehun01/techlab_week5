@@ -143,6 +143,13 @@ struct FSmoothingKeyHash
     }
 };
 
+struct FLodSettings
+{
+    float Ratios[MAX_MESH_LOD] = { 1.f, 0.25f, 0.05f };
+    float TargetError[MAX_MESH_LOD] = { 0.f, 0.05f, 1.0f};
+    float SloppyFallbackFactor = 1.5f;
+};
+
 using FVertexMap = std::unordered_map<FCornerKey, uint32, FCornerKeyHash>;
 using FSmoothingMap = std::unordered_map<FSmoothingKey, FVector, FSmoothingKeyHash>;
 
@@ -228,6 +235,11 @@ private:
     void StartEarClipping(const TArray<FCorner>& Corners);
 
     bool CookStaticMesh(const FObjInfo& Info, FObjModelData& Out);
+
+    // MAX_MESH_LOD 만큼 Lod를 만든다
+    static bool BuildLods(FObjModelData& Model, const FLodSettings& Setting);
+   
+    static uint32 SimplifySection(const FObjModelData& Model, const uint32* SrcIndices, uint32 SrcCount, uint32 TargetCount, float TargetError, TArray<uint32>& OutIndices, float& OutError, const FLodSettings& Setting);
 
 private:
     static constexpr std::string_view Spaces = " \t\r\n";

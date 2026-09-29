@@ -234,7 +234,10 @@ bool FBinArchive::SerializeValue(const FMeshSection& Value)
         && SerializeUInt32(Value.IndexCount)
         && SerializeString(Value.MaterialName)
         && SerializeValue(Value.LocalBounds.Min)
-        && SerializeValue(Value.LocalBounds.Max);
+        && SerializeValue(Value.LocalBounds.Max)
+        && SerializeArray(Value.Lods)
+        && SerializeArray(Value.LodErrors)
+        && SerializeUInt32(Value.LodCount);
 }
 
 bool FBinArchive::DeserializeValue(FMeshSection& Value)
@@ -243,7 +246,10 @@ bool FBinArchive::DeserializeValue(FMeshSection& Value)
         && DeserializeUInt32(Value.IndexCount)
         && DeserializeString(Value.MaterialName)
         && DeserializeValue(Value.LocalBounds.Min)
-        && DeserializeValue(Value.LocalBounds.Max);
+        && DeserializeValue(Value.LocalBounds.Max)
+        && DeserializeArray(Value.Lods)
+        && DeserializeArray(Value.LodErrors)
+        && DeserializeUInt32(Value.LodCount);
 }
 
 bool FBinArchive::SerializeValue(const FObjMaterialInfo& Value)
@@ -334,8 +340,30 @@ bool FBinArchive::DeserializeValue(uint32& Value)
     return DeserializeUInt32(Value);
 }
 
+bool FBinArchive::SerializeValue(const FMeshLODRange& Value)
+{
+    return SerializeUInt32(Value.FirstIndex)
+        && SerializeUInt32(Value.IndexCount);
+}
+
+bool FBinArchive::DeserializeValue(FMeshLODRange& Value)
+{
+    return DeserializeUInt32(Value.FirstIndex)
+        && DeserializeUInt32(Value.IndexCount);
+}
+
+bool FBinArchive::SerializeValue(const float& Value)
+{
+    return SerializeFloat(Value);
+}
+
+bool FBinArchive::DeserializeValue(float& Value)
+{
+    return DeserializeFloat(Value);
+}
+
 template<typename T>
-bool FBinArchive::SerializeArray(const TArray<T>& Values)
+bool FBinArchive::SerializeTArray(const TArray<T>& Values)
 {
     if (Values.size() > MaxElementCount
         || !SerializeUInt32(static_cast<uint32>(Values.size())))
@@ -355,7 +383,7 @@ bool FBinArchive::SerializeArray(const TArray<T>& Values)
 }
 
 template<typename T>
-bool FBinArchive::DeserializeArray(TArray<T>& Values)
+bool FBinArchive::DeserializeTArray(TArray<T>& Values)
 {
     uint32 Count = 0;
     if (!DeserializeUInt32(Count)
@@ -375,6 +403,52 @@ bool FBinArchive::DeserializeArray(TArray<T>& Values)
         }
 
         Values.push_back(std::move(Value));
+    }
+
+    return true;
+}
+
+template<typename T, size_t N>
+bool FBinArchive::SerializeArray(const T(&Values)[N])
+{
+    if (N > MaxElementCount
+        || !SerializeUInt32(static_cast<uint32>(N)))
+    {
+        return false;
+    }
+
+    for (uint32 i = 0; i < N; ++i)
+    {
+        if (!SerializeValue(Values[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+template<typename T, size_t N>
+bool FBinArchive::DeserializeArray(T (&Values)[N])
+{
+    uint32 Count = 0;
+    if (!DeserializeUInt32(Count)
+        || Count > MaxElementCount
+        || Count > GetRemainingBytes()
+        || Count != N)
+    {
+        return false;
+    }
+
+    for (uint32 i = 0; i < Count; ++i)
+    {
+        T Value{};
+        if (!DeserializeValue(Value))
+        {
+            return false;
+        }
+
+        Values[i] = std::move(Value);
     }
 
     return true;
@@ -441,12 +515,12 @@ bool FBinArchive::SerializeObjModel(const FObjModelData& Model)
     Clear();
     return SerializeUInt32(ObjFileSignature)
         && SerializeString(Model.PathFileName)
-        && SerializeArray(Model.Vertices)
-        && SerializeArray(Model.Indices)
-        && SerializeArray(Model.Sections)
-        && SerializeArray(Model.MaterialLibraryPaths)
-        && SerializeArray(Model.Groups)
-        && SerializeArray(Model.ObjectNames);
+        && SerializeTArray(Model.Vertices)
+        && SerializeTArray(Model.Indices)
+        && SerializeTArray(Model.Sections)
+        && SerializeTArray(Model.MaterialLibraryPaths)
+        && SerializeTArray(Model.Groups)
+        && SerializeTArray(Model.ObjectNames);
 }
 
 bool FBinArchive::DeserializeObjModel(FObjModelData& OutModel)
@@ -462,12 +536,12 @@ bool FBinArchive::DeserializeObjModel(FObjModelData& OutModel)
 
     FObjModelData Loaded;
     if (!DeserializeString(Loaded.PathFileName)
-        || !DeserializeArray(Loaded.Vertices)
-        || !DeserializeArray(Loaded.Indices)
-        || !DeserializeArray(Loaded.Sections)
-        || !DeserializeArray(Loaded.MaterialLibraryPaths)
-        || !DeserializeArray(Loaded.Groups)
-        || !DeserializeArray(Loaded.ObjectNames)
+        || !DeserializeTArray(Loaded.Vertices)
+        || !DeserializeTArray(Loaded.Indices)
+        || !DeserializeTArray(Loaded.Sections)
+        || !DeserializeTArray(Loaded.MaterialLibraryPaths)
+        || !DeserializeTArray(Loaded.Groups)
+        || !DeserializeTArray(Loaded.ObjectNames)
         || GetRemainingBytes() != 0
         || !ValidateObjModel(Loaded))
     {
@@ -483,7 +557,7 @@ bool FBinArchive::SerializeMaterials(const TArray<FObjMaterialInfo>& Materials)
 {
     Clear();
     return SerializeUInt32(MaterialFileSignature)
-        && SerializeArray(Materials);
+        && SerializeTArray(Materials);
 }
 
 bool FBinArchive::DeserializeMaterials(TArray<FObjMaterialInfo>& OutMaterials)
@@ -498,7 +572,7 @@ bool FBinArchive::DeserializeMaterials(TArray<FObjMaterialInfo>& OutMaterials)
     }
 
     TArray<FObjMaterialInfo> Loaded;
-    if (!DeserializeArray(Loaded) || GetRemainingBytes() != 0)
+    if (!DeserializeTArray(Loaded) || GetRemainingBytes() != 0)
     {
         return false;
     }

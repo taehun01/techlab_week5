@@ -1705,6 +1705,12 @@ bool FRenderResourceLibrary::CreateObjMeshes()
             continue;
         }
 
+        uint32 CpuIndexCount = 0u;
+        for (auto& Section : ModelData.Sections)
+        {
+            CpuIndexCount = CpuIndexCount < Section.FirstIndex + Section.IndexCount ? Section.FirstIndex + Section.IndexCount : CpuIndexCount;
+        }
+
         FMeshDesc Desc
         {
             .VertexData = ModelData.Vertices.data(),
@@ -1717,6 +1723,7 @@ bool FRenderResourceLibrary::CreateObjMeshes()
             .IndexDataSize =
                 static_cast<uint32>(sizeof(uint32) * ModelData.Indices.size()),
             .IndexCount = static_cast<uint32>(ModelData.Indices.size()),
+            .CpuIndexCount = CpuIndexCount,
             .bIsLine = false
         };
 

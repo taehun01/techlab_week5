@@ -55,12 +55,22 @@ private:
     bool DeserializeValue(FString& Value);
     bool SerializeValue(const uint32& Value);
     bool DeserializeValue(uint32& Value);
+    bool SerializeValue(const FMeshLODRange& Value);
+    bool DeserializeValue(FMeshLODRange& Value);
+    bool SerializeValue(const float& Value);
+    bool DeserializeValue(float& Value);
 
     template<typename T>
-    bool SerializeArray(const TArray<T>& Values);
+    bool SerializeTArray(const TArray<T>& Values);
 
     template<typename T>
-    bool DeserializeArray(TArray<T>& Values);
+    bool DeserializeTArray(TArray<T>& Values);
+
+    template<typename T, size_t N>
+    bool SerializeArray(const T(&Values)[N]);
+
+    template<typename T, size_t N>
+    bool DeserializeArray(T(&Values)[N]);
 
     bool ValidateObjModel(const FObjModelData& Model);
 
