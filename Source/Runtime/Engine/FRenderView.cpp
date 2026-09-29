@@ -508,7 +508,7 @@ uint64 FRenderView::GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint3
     {
         SortKey = 1u;
 
-        SortKey <<= 24;
+        SortKey <<= 38 + 24;
         SortKey |= (0xffffff & Depth);
     }
 

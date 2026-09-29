@@ -142,13 +142,13 @@ void FEditorApplication::Tick(float DeltaTime) {
         }
     }
 #else
-    ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
+    //ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
     EditorViewportWindow.Process(Editor, DeltaTime);
-    WorldOutliner.Process(Editor);
+    //WorldOutliner.Process(Editor);
     ControlPanelWindow.Process(Editor);
-    PropertyWindow.Process(Editor);
+    //PropertyWindow.Process(Editor);
     ConsoleWindow.Process(Editor);
-    ContentsDrawer.Process(Editor);
+    //ContentsDrawer.Process(Editor);
     OverlayStat.Process(Editor, DeltaTime);
     STATS.Reset();
 
