@@ -1,4 +1,5 @@
 #include "FOctree.h"
+#include "Runtime/Engine/FFrustum.h"
 
 namespace
 {
@@ -143,6 +144,11 @@ void FOctree::QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits) const
 	QueryRay(Ray, OutHits, 0);
 }
 
+void FOctree::QueryFrustum(const FFrustum& Frustum, TArray<int32>& OutObjects) const
+{
+	QueryFrustum(Frustum, OutObjects, 0);
+}
+
 void FOctree::AddToNode(int32 NodeIndex, const FOctreeElement& Element)
 {
 	ElementIdByObjectIndex[Element.ObjectIndex]
@@ -231,6 +237,34 @@ void FOctree::QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutOb
 		if (IsIntersect(ToAABB(Node.Center, Node.HalfSize * Settings.LooseFactor), Box))
 		{
 			QueryAABB(Box, OutObjects, ChildIndex);
+		}
+	}
+}
+
+void FOctree::QueryFrustum(const FFrustum& Frustum, TArray<int32>& OutObjects, int32 NodeIndex) const
+{
+	for (const auto& Element : Elements[NodeIndex])
+	{
+		if (Frustum.Intersects(Element.Bounds))
+		{
+			OutObjects.push_back(Element.ObjectIndex);
+		}
+	}
+
+	if (Nodes[NodeIndex].FirstChild == -1)
+	{
+		return;
+	}
+
+	for (int32 I = 0; I < 8; I++)
+	{
+		int32 ChildIndex = Nodes[NodeIndex].FirstChild + I;
+		const FNode& Node = Nodes[ChildIndex];
+
+		// 느슨한(loose) 노드 범위가 프러스텀 밖이면 그 아래 원소도 모두 밖이다
+		if (Frustum.Intersects(ToAABB(Node.Center, Node.HalfSize * Settings.LooseFactor)))
+		{
+			QueryFrustum(Frustum, OutObjects, ChildIndex);
 		}
 	}
 }

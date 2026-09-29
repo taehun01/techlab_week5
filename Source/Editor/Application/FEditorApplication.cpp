@@ -116,7 +116,10 @@ void FEditorApplication::Update(float DeltaTime) {
   Tick(DeltaTime);
 }
 
-void FEditorApplication::BeginFrame() { ImguiManager.NewFrame(); }
+void FEditorApplication::BeginFrame() {
+  ZoneScopedN("ImGui NewFrame");
+  ImguiManager.NewFrame();
+}
 
 void FEditorApplication::Tick(float DeltaTime) {
 #if IS_OBJ_VIEWER
@@ -142,26 +145,32 @@ void FEditorApplication::Tick(float DeltaTime) {
         }
     }
 #else
-    //ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
-    EditorViewportWindow.Process(Editor, DeltaTime);
-    //WorldOutliner.Process(Editor);
-    ControlPanelWindow.Process(Editor);
-    //PropertyWindow.Process(Editor);
-    ConsoleWindow.Process(Editor);
-    //ContentsDrawer.Process(Editor);
-    OverlayStat.Process(Editor, DeltaTime);
-    STATS.Reset();
-
-    for (const auto& Window : PreviewWindows)
     {
-        if (Window && Window->IsOpen())
+        ZoneScopedN("UI Windows");
+        //ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
+        EditorViewportWindow.Process(Editor, DeltaTime);
+        //WorldOutliner.Process(Editor);
+        ControlPanelWindow.Process(Editor);
+        //PropertyWindow.Process(Editor);
+        ConsoleWindow.Process(Editor);
+        //ContentsDrawer.Process(Editor);
+        OverlayStat.Process(Editor, DeltaTime);
+        STATS.Reset();
+
+        for (const auto& Window : PreviewWindows)
         {
-            Window->Process(Editor, DeltaTime);
+            if (Window && Window->IsOpen())
+            {
+                Window->Process(Editor, DeltaTime);
+            }
         }
     }
 #endif
 
-    Editor.Process();
+    {
+        ZoneScopedN("Editor Process");
+        Editor.Process();
+    }
 }
 
 #include "ThirdParty/Imgui/imgui.h"
@@ -320,8 +329,12 @@ void FEditorApplication::Render() {
     //    }
     //}
 
-    RenderView->GetRenderer().BindBackBufferWithDepth();
-    ImguiManager.RenderUI();
+    {
+        ZoneScopedN("ImGui RenderUI");
+        TracyD3D11Zone(RenderView->GetRenderer().GetGpuProfiler(), "ImGui");
+        RenderView->GetRenderer().BindBackBufferWithDepth();
+        ImguiManager.RenderUI();
+    }
 #endif
 
 }

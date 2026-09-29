@@ -4,6 +4,7 @@
 #include "Runtime/Math/FMatrix.h"
 
 #include <algorithm>
+#include <cmath>
 
 FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FStaticMesh& Mesh)
 {	
@@ -33,6 +34,28 @@ FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FStaticMesh& Mesh, const 
 
 FAxisAlignedBoundingBox::FAxisAlignedBoundingBox(const FAxisAlignedBoundingBox& LocalBox, const FMatrix& ModelMatrix)
 {
+	// 유효한 박스는 중심/반경 변환(Arvo)으로 구한다. 8개 꼭짓점을 변환해 min/max를 구한 것과 같은 결과를
+	// 점 변환 1번 + 3x3 절댓값 곱으로 얻는다. (행벡터 규약: p' = p * M)
+	if (LocalBox.Min.X <= LocalBox.Max.X && LocalBox.Min.Y <= LocalBox.Max.Y && LocalBox.Min.Z <= LocalBox.Max.Z)
+	{
+		const FVector LocalCenter = (LocalBox.Min + LocalBox.Max) * 0.5f;
+		const FVector LocalExtent = (LocalBox.Max - LocalBox.Min) * 0.5f;
+		const FVector WorldCenter = ModelMatrix.TransformPointRow(LocalCenter);
+
+		FVector WorldExtent;
+		for (int j = 0; j < 3; ++j)
+		{
+			WorldExtent[j] = std::abs(ModelMatrix.M[0][j]) * LocalExtent.X
+				+ std::abs(ModelMatrix.M[1][j]) * LocalExtent.Y
+				+ std::abs(ModelMatrix.M[2][j]) * LocalExtent.Z;
+		}
+
+		Min = WorldCenter - WorldExtent;
+		Max = WorldCenter + WorldExtent;
+		return;
+	}
+
+	// 비어 있는(무효) 박스는 기존 방식 그대로 처리한다
 	FVector Vertices[8] = {
 		FVector(LocalBox.Min.X, LocalBox.Min.Y, LocalBox.Min.Z),
 		FVector(LocalBox.Min.X, LocalBox.Min.Y, LocalBox.Max.Z),

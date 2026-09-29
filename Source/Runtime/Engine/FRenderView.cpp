@@ -19,36 +19,99 @@
 #include "Runtime/Engine/UScene.h"
 #include "FFrustum.h"
 
+#include <algorithm>
+#include <execution>
 #include <fstream>
+#include <numeric>
+
+namespace
+{
+// [0, Count)를 ChunkSize 단위 구간으로 나눠 Body(Begin, End)를 스레드 풀에서 병렬 실행한다.
+// 구간이 하나뿐이면 호출한 스레드에서 바로 실행한다.
+template <typename TBody>
+void ParallelForRange(size_t Count, const TBody& Body, size_t ChunkSize = 1024)
+{
+    const size_t NumChunks = (Count + ChunkSize - 1) / ChunkSize;
+    if (NumChunks <= 1)
+    {
+        Body(size_t{ 0 }, Count);
+        return;
+    }
+
+    TArray<size_t> ChunkIndices(NumChunks);
+    std::iota(ChunkIndices.begin(), ChunkIndices.end(), size_t{ 0 });
+    std::for_each(std::execution::par, ChunkIndices.begin(), ChunkIndices.end(), [&](size_t Chunk)
+    {
+        const size_t Begin = Chunk * ChunkSize;
+        Body(Begin, (std::min)(Count, Begin + ChunkSize));
+    });
+}
+}
 
 FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
+    ZoneScopedN("CollectScenePrimitives");
     auto& ResLib = FRenderResourceLibrary::Get();
 
-    FFrustum CullingFrustum = View.Camera->CreateFrustum();
+    // D3D 클립 변환을 ViewProj에 한 번만 곱해 둔다. 오브젝트마다 MVP에 곱하던 것과 결과는 같다.
+    // 이렇게 만든 MVP는 DrawRenderData에서 bConstantsInD3DClip=true로 그린다.
+    const FMatrix ViewProjD3D = View.ViewProj * FRenderer::GetUnrealClipToD3DClip();
 
-    int CulledObjects = 0;
+    // 1) 후보: 프러스텀 컬링 없이 씬의 모든 렌더 컴포넌트를 그린다 (화면 밖은 GPU 클리핑에 맡김).
+    //    실험: 전부 보이는 씬에서는 컬링 비용(옥트리 질의 + 오브젝트별 AABB/프러스텀 검사)이 순수 손해라서 뺐다.
+    const TArray<UMeshComponent*>& Candidates = Scene.GetRenderComponents();
 
-    for (auto& MeshComponent : Scene.GetRenderComponents())
+    // 2) 병렬 단계: 컴포넌트별 월드 행렬·카메라 거리를 계산한다.
+    //    여기서는 읽기만 하는 함수만 호출한다 (상태를 바꾸는 머티리얼 조회 등은 3단계에서 순차로).
+    const FCamera& Camera = *View.Camera;
+    const float NearZ = Camera.Projection.NearZ;
+    const float FarZ = Camera.Projection.FarZ;
+    const uint64 ShowFlags = static_cast<uint64>(View.ShowFlags);
+
+    CullResults.resize(Candidates.size());
     {
-        if (!MeshComponent) continue;
-
-        const FMatrix World = MeshComponent->GetRenderMatrix(*View.Camera);
-        FAxisAlignedBoundingBox WorldBounds(MeshComponent->GetLocalBounds(), World);
-
-        if (!CullingFrustum.Intersects(WorldBounds))
+        ZoneScopedN("Transform (parallel)");
+        ParallelForRange(Candidates.size(), [&](size_t Begin, size_t End)
         {
-            CulledObjects++;
-            continue;
-        }
+            for (size_t i = Begin; i < End; ++i)
+            {
+                FPrimitiveCullResult& Result = CullResults[i];
+                Result.bVisible = false;
 
-        // 쇼 플래그 확인
-        if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(MeshComponent->GetShowFlag())) == 0)
-        {
-            continue;
-        }
+                UMeshComponent* MeshComponent = Candidates[i];
+                if (!MeshComponent) continue;
+
+                // 쇼 플래그 확인
+                if ((ShowFlags & static_cast<uint64>(MeshComponent->GetShowFlag())) == 0) continue;
+
+                Result.World = MeshComponent->GetRenderMatrix(Camera);
+
+                // 정렬 키용 카메라 거리 (Near~Far를 24비트로 양자화)
+                const FVector CameraToMesh = MeshComponent->GetGlobalTransform().Location - Camera.Position;
+                float Distance = CameraToMesh.Size();
+                Distance = Distance < FarZ ? Distance : FarZ;
+                Distance = Distance > NearZ ? Distance : NearZ;
+                const float NormalizedDistance = (Distance - NearZ) / (FarZ - NearZ);
+                Result.QuantizedDistance = static_cast<uint32>(0xffffff * NormalizedDistance);
+
+                Result.bVisible = true;
+            }
+        });
+    }
+
+    TracyPlot("Render Components", static_cast<int64_t>(Candidates.size()));
+
+    // 3) 순차 단계: 보이는 컴포넌트의 렌더 데이터를 만들어 큐에 넣는다.
+    for (size_t CandidateIndex = 0; CandidateIndex < Candidates.size(); ++CandidateIndex)
+    {
+        const FPrimitiveCullResult& Cull = CullResults[CandidateIndex];
+        if (!Cull.bVisible) continue;
+
+        UMeshComponent* MeshComponent = Candidates[CandidateIndex];
+        const FMatrix& World = Cull.World;
+        const uint32 QuantizedDistance = Cull.QuantizedDistance;
 
         bool bSelected = false;
         if (MeshComponent->GetActorOwner() && MeshComponent->GetActorOwner() == SelectedActor)
@@ -57,12 +120,14 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
 
 
-        TArray<FRenderData> RenderDatas = MeshComponent->GetRenderDatas(*View.Camera);
+        TArray<FRenderData>& RenderDatas = ComponentRenderDatas;
+        RenderDatas.clear();
+        MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas);
         // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
         if (RenderDatas.empty()) continue;
 
         // 공통 Matrix 및 Color 계산 (루프 밖 1회 수행)
-        const FMatrix MVP = World * View.ViewProj;
+        const FMatrix MVP = World * ViewProjD3D;
 
         FVector FinalColorOverride = MeshComponent->GetColor();
         float   FinalColorOverrideAmount = MeshComponent->GetColorAmount();
@@ -78,15 +143,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
 
         const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
-
-        FVector CameraToMesh = MeshComponent->GetGlobalTransform().Location - View.Camera->Position;
-        float Distance = CameraToMesh.Size();
-        Distance = Distance < View.Camera->Projection.FarZ ? Distance : View.Camera->Projection.FarZ;
-        Distance = Distance > View.Camera->Projection.NearZ ? Distance : View.Camera->Projection.NearZ;
-        float DistanceMax = View.Camera->Projection.FarZ - View.Camera->Projection.NearZ;
-        float DistanceMin = View.Camera->Projection.NearZ;
-        float NormalizedDistance = (Distance - DistanceMin) / (DistanceMax);
-        uint32 QuantizedDistance = static_cast<uint32>(0xffffff * NormalizedDistance);
 
         // 슬롯별 RenderData 순회 처리
         for (FRenderData& Data : RenderDatas)
@@ -108,8 +164,13 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
             // 머티리얼의 블렌드 모드에 따라 불투명 및 반투명 패스 자동 분기
             // 메시/머티리얼은 여기서 한 번만 조회해 RenderData에 포인터로 보관
-            FMaterial* Material = ResLib.GetMaterial(Data.MaterialId).get();
-            Data.MeshPtr = ResLib.GetMesh(Data.MeshId).get();
+            // 컴포넌트가 머티리얼 포인터를 채워 줬으면 문자열 맵 조회를 건너뛴다
+            FMaterial* Material = Data.MaterialPtr ? Data.MaterialPtr : ResLib.GetMaterial(Data.MaterialId).get();
+            // 컴포넌트가 메시 포인터를 채워 줬으면 문자열 맵 조회를 건너뛴다
+            if (!Data.MeshPtr)
+            {
+                Data.MeshPtr = ResLib.GetMesh(Data.MeshId).get();
+            }
             Data.MaterialPtr = Material ? Material : ResLib.GetMaterial(FName("Simple")).get();
 
             if (Material && (Material->GetBlendMode() == EBlendMode::Additive || Material->GetBlendMode() == EBlendMode::Translucent))
@@ -128,6 +189,9 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const FEditorRenderContext& EditorCtx)
 {
+    ZoneScopedN("RenderView");
+    TracyD3D11Zone(Renderer.GetGpuProfiler(), "Viewport");
+
     // 뷰포트 시작
     BeginView(View.TopLeftUV, View.LengthUV, View.ViewMode, View.LightConstants);
 
@@ -135,13 +199,18 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
 
     // 정렬
-    RenderQueue.Sort();
+    {
+        ZoneScopedN("RenderQueue Sort");
+        RenderQueue.Sort();
+    }
 
     // 기본 씬 오브젝트 패스
     FlushBasePass(*View.Camera);
 
     // 에디터 라인 패스
     if (EditorCtx.Grid) {
+        ZoneScopedN("Grid");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "Grid");
         DrawGrid(*View.Camera, *EditorCtx.Grid);
     }
 
@@ -165,10 +234,17 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
         }
     }
     
-    FlushLinePass(*View.Camera);
+    {
+        ZoneScopedN("LinePass");
+        FlushLinePass(*View.Camera);
+    }
 
     // 후처리 외곽선 패스
-    RenderPostProcessPass(*View.Camera, EditorCtx.SelectedActor, View.TopLeftUV, View.LengthUV);
+    {
+        ZoneScopedN("PostProcess Outline");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "PostProcess Outline");
+        RenderPostProcessPass(*View.Camera, EditorCtx.SelectedActor, View.TopLeftUV, View.LengthUV);
+    }
 
     // 오버레이 패스
     if (EditorCtx.Gizmo && EditorCtx.SelectedActor)
@@ -405,16 +481,26 @@ void FRenderView::DrawRenderData(const FRenderData& Data)
     if (!Mesh || !Material) return;
 
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
-    Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount);
+    // 큐의 MVP는 CollectScenePrimitives에서 이미 D3D 클립 좌표계로 만들었다
+    Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount,
+        /*Slot*/ 0u, /*bApplyViewMode*/ true, /*bConstantsInD3DClip*/ true);
 }
 
 
 void FRenderView::FlushQueue(const FCamera& Camera)
 {
+    ZoneScopedN("FlushQueue");
+    TracyPlot("Opaque Draws", static_cast<int64_t>(RenderQueue.GetOpaqueRenderQ().size()));
+    TracyPlot("Translucent Draws", static_cast<int64_t>(RenderQueue.GetTranslucentRenderQ().size()));
+
     // 불투명 패스
-    for (const auto& [SortKey, Index] : RenderQueue.GetOpaqueSortKeys())
     {
-        DrawRenderData(RenderQueue.GetOpaqueRenderQ()[Index]);
+        ZoneScopedN("Opaque");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "Opaque");
+        for (const auto& [SortKey, Index] : RenderQueue.GetOpaqueSortKeys())
+        {
+            DrawRenderData(RenderQueue.GetOpaqueRenderQ()[Index]);
+        }
     }
 
     // 인스턴싱 패스
@@ -429,9 +515,13 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     }
 
     // 반투명 패스
-    for (const auto& [SortKey, Index] : RenderQueue.GetTranslucentSortKeys())
     {
-        DrawRenderData(RenderQueue.GetTranslucentRenderQ()[Index]);
+        ZoneScopedN("Translucent");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "Translucent");
+        for (const auto& [SortKey, Index] : RenderQueue.GetTranslucentSortKeys())
+        {
+            DrawRenderData(RenderQueue.GetTranslucentRenderQ()[Index]);
+        }
     }
 
     // 텍스트 패스

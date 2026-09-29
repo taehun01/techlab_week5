@@ -2,6 +2,7 @@
 
 #include "Runtime/CoreUObject/UMeshComponent.h"
 #include "Runtime/CoreUObject/FUObjectArray.h"
+#include "Runtime/Engine/FFrustum.h"
 
 #include <algorithm>
 
@@ -128,6 +129,25 @@ void FSceneOctree::QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<UMeshCom
 			OutComponents.push_back(Component);
 		}
 	}
+}
+
+void FSceneOctree::QueryFrustumCandidates(const FFrustum& Frustum, TArray<UMeshComponent*>& OutComponents) const
+{
+	TArray<int32>& Hits = FrustumQueryHits;
+	Hits.clear();
+	Tree.QueryFrustum(Frustum, Hits);
+
+	OutComponents.reserve(OutComponents.size() + Hits.size() + CameraFacingComponents.size());
+	for (const int32 Hit : Hits)
+	{
+		UMeshComponent* Component = FindComponent(Hit);
+		if (Component)
+		{
+			OutComponents.push_back(Component);
+		}
+	}
+
+	OutComponents.insert(OutComponents.end(), CameraFacingComponents.begin(), CameraFacingComponents.end());
 }
 
 UMeshComponent* FSceneOctree::FindComponent(int32 ObjectIndex) const

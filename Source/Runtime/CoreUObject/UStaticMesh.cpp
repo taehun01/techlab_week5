@@ -44,6 +44,35 @@ int32 UStaticMesh::GetMaterialSlotCount() const
     return static_cast<int32>(Materials.size());
 }
 
+FMaterial* UStaticMesh::ResolveMaterialSlot(int32 Slot, FName& OutMaterialId) const
+{
+    if (Slot < 0 || Slot >= static_cast<int32>(Materials.size()))
+    {
+        return nullptr;
+    }
+
+    if (MaterialSlotRefs.size() < Materials.size())
+    {
+        MaterialSlotRefs.resize(Materials.size());
+    }
+
+    FMaterialSlotRef& Ref = MaterialSlotRefs[Slot];
+    TSharedPtr<FMaterial> Material = Ref.Material.lock();
+
+    // 슬롯 이름이 바뀌었거나, 아직 못 찾았거나, 머티리얼이 삭제됐으면 다시 찾는다
+    if (!Material || Ref.SourceName != Materials[Slot])
+    {
+        Ref.SourceName = Materials[Slot];
+        Ref.MaterialId = FName(Ref.SourceName);
+        Material = FRenderResourceLibrary::Get().GetMaterial(Ref.MaterialId);
+        Ref.Material = Material;
+    }
+
+    OutMaterialId = Ref.MaterialId;
+    // 머티리얼 소유권은 FRenderResourceLibrary가 갖고 있으므로 프레임 동안 유효하다
+    return Material.get();
+}
+
 
 const FString& UStaticMesh::GetAssetPathFileName() const
 {

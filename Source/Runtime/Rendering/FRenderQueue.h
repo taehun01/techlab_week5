@@ -7,6 +7,7 @@
 #include "Runtime/Core/PointerTypes.h"
 #include <Runtime\Core\IntTypes.h>
 #include <algorithm>
+#include <execution>
 
 // 렌더링에 필요한 드로우 정보
 struct FRenderData
@@ -63,8 +64,9 @@ public:
 
     void Sort()
     {
-        std::sort(OpaqueSortKeys.begin(), OpaqueSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
-        std::sort(TranslucentSortKeys.begin(), TranslucentSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
+        // 키 5만 개 규모라 병렬 정렬이 이득이다. 작은 배열은 표준 라이브러리가 알아서 순차로 처리한다.
+        std::sort(std::execution::par, OpaqueSortKeys.begin(), OpaqueSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
+        std::sort(std::execution::par, TranslucentSortKeys.begin(), TranslucentSortKeys.end(), [](const auto& X, const auto& Y) {return X.first < Y.first;});
     }
 
     bool IsOpaqueRQEmpty() const { return OpaqueRenderQ.empty(); }
