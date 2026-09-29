@@ -2,8 +2,15 @@
 #include "Runtime/Core/FNamePool.h"
 #include "Runtime/Utility/EngineUtil.h"
 
+// "None"은 매우 자주 만들어지므로 풀 조회는 처음 한 번만 한다.
+static const FNameEntry& GetNoneEntry()
+{
+	static const FNameEntry NoneEntry = FNamePool::AddEntry("None");
+	return NoneEntry;
+}
+
 FName::FName()
-	: FName{ FString{ "None" } }
+	: Entry{ GetNoneEntry() }
 {
 }
 
@@ -19,7 +26,9 @@ FName::FName(const FString& Str)
 
 bool FName::IsNone() const
 {
-	return *this == FName{ "None" };
+	const FNameEntry& None = GetNoneEntry();
+	return Entry.ComparisonBucketIndex == None.ComparisonBucketIndex
+		&& Entry.ComparisonIndex == None.ComparisonIndex;
 }
 
 int32 FName::Compare(const FName& Other) const
