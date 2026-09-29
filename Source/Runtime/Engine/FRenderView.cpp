@@ -25,6 +25,7 @@ FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
 
 void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& View, const AActor* SelectedActor)
 {
+    ZoneScopedN("CollectScenePrimitives");
     auto& ResLib = FRenderResourceLibrary::Get();
 
     FFrustum CullingFrustum = View.Camera->CreateFrustum();
@@ -128,6 +129,9 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
 void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const FEditorRenderContext& EditorCtx)
 {
+    ZoneScopedN("RenderView");
+    TracyD3D11Zone(Renderer.GetGpuProfiler(), "Viewport");
+
     // 뷰포트 시작
     BeginView(View.TopLeftUV, View.LengthUV, View.ViewMode, View.LightConstants);
 
@@ -135,13 +139,18 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
 
     // 정렬
-    RenderQueue.Sort();
+    {
+        ZoneScopedN("RenderQueue Sort");
+        RenderQueue.Sort();
+    }
 
     // 기본 씬 오브젝트 패스
     FlushBasePass(*View.Camera);
 
     // 에디터 라인 패스
     if (EditorCtx.Grid) {
+        ZoneScopedN("Grid");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "Grid");
         DrawGrid(*View.Camera, *EditorCtx.Grid);
     }
 
@@ -165,10 +174,17 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
         }
     }
     
-    FlushLinePass(*View.Camera);
+    {
+        ZoneScopedN("LinePass");
+        FlushLinePass(*View.Camera);
+    }
 
     // 후처리 외곽선 패스
-    RenderPostProcessPass(*View.Camera, EditorCtx.SelectedActor, View.TopLeftUV, View.LengthUV);
+    {
+        ZoneScopedN("PostProcess Outline");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "PostProcess Outline");
+        RenderPostProcessPass(*View.Camera, EditorCtx.SelectedActor, View.TopLeftUV, View.LengthUV);
+    }
 
     // 오버레이 패스
     if (EditorCtx.Gizmo && EditorCtx.SelectedActor)
@@ -411,10 +427,18 @@ void FRenderView::DrawRenderData(const FRenderData& Data)
 
 void FRenderView::FlushQueue(const FCamera& Camera)
 {
+    ZoneScopedN("FlushQueue");
+    TracyPlot("Opaque Draws", static_cast<int64_t>(RenderQueue.GetOpaqueRenderQ().size()));
+    TracyPlot("Translucent Draws", static_cast<int64_t>(RenderQueue.GetTranslucentRenderQ().size()));
+
     // 불투명 패스
-    for (const auto& [SortKey, Index] : RenderQueue.GetOpaqueSortKeys())
     {
-        DrawRenderData(RenderQueue.GetOpaqueRenderQ()[Index]);
+        ZoneScopedN("Opaque");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "Opaque");
+        for (const auto& [SortKey, Index] : RenderQueue.GetOpaqueSortKeys())
+        {
+            DrawRenderData(RenderQueue.GetOpaqueRenderQ()[Index]);
+        }
     }
 
     // 인스턴싱 패스
@@ -429,9 +453,13 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     }
 
     // 반투명 패스
-    for (const auto& [SortKey, Index] : RenderQueue.GetTranslucentSortKeys())
     {
-        DrawRenderData(RenderQueue.GetTranslucentRenderQ()[Index]);
+        ZoneScopedN("Translucent");
+        TracyD3D11Zone(Renderer.GetGpuProfiler(), "Translucent");
+        for (const auto& [SortKey, Index] : RenderQueue.GetTranslucentSortKeys())
+        {
+            DrawRenderData(RenderQueue.GetTranslucentRenderQ()[Index]);
+        }
     }
 
     // 텍스트 패스

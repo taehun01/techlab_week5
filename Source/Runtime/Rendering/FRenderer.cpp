@@ -34,6 +34,9 @@ bool FRenderer::Initialize(HWND Window) {
 
   LineBatcher.Initialize(Device.Get()); // batch line
 
+  GpuProfiler = TracyD3D11Context(Device.Get(), Context.Get());
+  TracyD3D11ContextName(GpuProfiler, "D3D11 Immediate", 15);
+
   return true;
 }
 
@@ -44,6 +47,11 @@ void FRenderer::Shutdown() {
   }
 
   LineBatcher.Shutdown();
+
+  if (GpuProfiler) {
+    TracyD3D11Destroy(GpuProfiler);
+    GpuProfiler = nullptr;
+  }
 
   b0ConstantBuffer.Reset();
   FrameConstantBuffer.Reset();
@@ -104,7 +112,16 @@ void FRenderer::ClearDepth() {
 }
 
 // VSync 끔: 프레임을 제한하지 않는다.
-void FRenderer::SwapBuffer() { SwapChain->Present(0u, 0u); }
+void FRenderer::SwapBuffer() {
+  {
+    ZoneScopedN("Present");
+    SwapChain->Present(0u, 0u);
+  }
+  // 이번 프레임까지 끝난 GPU 타임스탬프 쿼리를 Tracy로 보낸다
+  if (GpuProfiler) {
+    TracyD3D11Collect(GpuProfiler);
+  }
+}
 
 void FRenderer::OnWindowSize(UINT Width, UINT Height) {
   Context->OMSetRenderTargets(0, nullptr, nullptr);

@@ -81,8 +81,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
   SceneManager.SetScene(NewObject<UScene>());
 
   // 사과 50만개 테스트용 코드
-  UStaticMesh* RedAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("apple_mid");
-  UStaticMesh* YellowAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("bitten_apple_mid");
+  UStaticMesh* RedAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("Cube");
+  UStaticMesh* YellowAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("Cube");
 
   const float Spacing = 1.f;
 
@@ -143,12 +143,20 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
       bRequestResize = false;
     }
 
-    FInputManager::Get().BeginFrame();
-    EditorApp.Update(FTimeManager::Get().GetDeltaTime());
+    {
+      ZoneScopedN("Update");
+      FInputManager::Get().BeginFrame();
+      EditorApp.Update(FTimeManager::Get().GetDeltaTime());
+    }
 
-    Renderer.BeginFrame();
-    EditorApp.Render();
+    {
+      ZoneScopedN("Render");
+      TracyD3D11Zone(Renderer.GetGpuProfiler(), "GPU Frame");
+      Renderer.BeginFrame();
+      EditorApp.Render();
+    }
     Renderer.SwapBuffer();
+    FrameMark;
 
     //EditorApp.CollectGarbage();
   }

@@ -48,6 +48,12 @@ project "MyEngine"
         "Resources/MasterYi/MasterYi_HeadData.h",
     }
     removefiles { "Source/ThirdParty/DirectXTK/**" }
+    -- Tracy는 TracyClient.cpp 하나가 나머지 소스를 #include하는 유니티 빌드라 개별 .cpp는 컴파일하지 않는다
+    removefiles {
+        "Source/ThirdParty/tracy/client/**.cpp",
+        "Source/ThirdParty/tracy/common/**.cpp",
+        "Source/ThirdParty/tracy/libbacktrace/**.cpp",
+    }
 
     includedirs {
         ".",
@@ -58,6 +64,9 @@ project "MyEngine"
     }
 
     defines { "NOMINMAX", "_CONSOLE" }
+    -- Tracy 프로파일러 (뷰어: tracy-profiler.exe v0.14.1). ON_DEMAND라 뷰어가 연결됐을 때만 수집한다.
+    -- 계측을 완전히 빼려면 TRACY_ENABLE을 지운다(매크로가 전부 비어 비용이 없다).
+    defines { "TRACY_ENABLE", "TRACY_ON_DEMAND" }
     buildoptions { "/utf-8", "/FS" }
 
     links {
@@ -73,6 +82,9 @@ project "MyEngine"
 
     -- 서드파티 ImGui 경고 끄기
     filter "files:Source/ThirdParty/Imgui/**.cpp"
+        warnings "Off"
+
+    filter "files:Source/ThirdParty/tracy/**.cpp"
         warnings "Off"
 
     -- HLSL (Shader Model 5.0, 결과물은 $(OutDir)Shader\*.cso)

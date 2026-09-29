@@ -18,6 +18,8 @@
 #include <d3d11.h>
 #include <filesystem>
 #include <wrl/client.h>
+#include "ThirdParty/tracy/tracy/Tracy.hpp"
+#include "ThirdParty/tracy/tracy/TracyD3D11.hpp"
 #include <WICTextureLoader.h>
 
 class FTexture;
@@ -137,6 +139,9 @@ public:
 
     void ResetRenderState() { CurrentRenderState.Reset(); }
 
+    // Tracy GPU 구간 계측용 컨텍스트. TracyD3D11Zone(Renderer.GetGpuProfiler(), "이름")으로 쓴다.
+    [[nodiscard]] TracyD3D11Ctx GetGpuProfiler() const { return GpuProfiler; }
+
 private:
     bool InitializeDeviceAndSwapChain(HWND Window);
     bool InitializeBackBufferAndDepthStencil();
@@ -171,6 +176,7 @@ private:
 
     EViewModeIndex CurrentRenderMode = EViewModeIndex::VMI_Lit;
     FRenderState CurrentRenderState;
+    TracyD3D11Ctx GpuProfiler = nullptr;
 public:
     template <typename TConstants>
     void FlushLineBatch(
