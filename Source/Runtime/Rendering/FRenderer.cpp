@@ -171,14 +171,25 @@ TSharedPtr<FStaticMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
   Mesh->VertexStride = Desc.VertexStride;
 
   if (Desc.IndexCount > 0 && Desc.IndexData) {
+    // 정점 수가 16비트 범위 안이면 인덱스를 16비트로 줄여 올린다.
+    const bool bUse16BitIndices = Desc.VertexCount <= 65536u;
+    TArray<uint16> Indices16;
+    if (bUse16BitIndices) {
+      const auto *Indices32 = static_cast<const uint32 *>(Desc.IndexData);
+      Indices16.assign(Indices32, Indices32 + Desc.IndexCount);
+    }
+
     D3D11_BUFFER_DESC IndexBufferDesc = {
-        .ByteWidth = Desc.IndexDataSize,
+        .ByteWidth = bUse16BitIndices
+                         ? static_cast<UINT>(Indices16.size() * sizeof(uint16))
+                         : Desc.IndexDataSize,
         .Usage = D3D11_USAGE_DEFAULT,
         .BindFlags = D3D11_BIND_INDEX_BUFFER,
     };
 
     D3D11_SUBRESOURCE_DATA IndexData = {
-        .pSysMem = Desc.IndexData,
+        .pSysMem = bUse16BitIndices ? static_cast<const void *>(Indices16.data())
+                                    : Desc.IndexData,
     };
 
     Result =
@@ -186,6 +197,8 @@ TSharedPtr<FStaticMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
     if (FAILED(Result)) {
       return nullptr;
     }
+    Mesh->IndexFormat =
+        bUse16BitIndices ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
   }
   Mesh->IndexCount = Desc.IndexCount;
 

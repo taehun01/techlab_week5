@@ -19,7 +19,34 @@
 #include "Runtime/Engine/UScene.h"
 #include "FFrustum.h"
 
+#include <algorithm>
+#include <execution>
 #include <fstream>
+#include <numeric>
+
+namespace
+{
+// [0, Count)를 ChunkSize 단위 구간으로 나눠 Body(Begin, End)를 스레드 풀에서 병렬 실행한다.
+// 구간이 하나뿐이면 호출한 스레드에서 바로 실행한다.
+template <typename TBody>
+void ParallelForRange(size_t Count, const TBody& Body, size_t ChunkSize = 1024)
+{
+    const size_t NumChunks = (Count + ChunkSize - 1) / ChunkSize;
+    if (NumChunks <= 1)
+    {
+        Body(size_t{ 0 }, Count);
+        return;
+    }
+
+    TArray<size_t> ChunkIndices(NumChunks);
+    std::iota(ChunkIndices.begin(), ChunkIndices.end(), size_t{ 0 });
+    std::for_each(std::execution::par, ChunkIndices.begin(), ChunkIndices.end(), [&](size_t Chunk)
+    {
+        const size_t Begin = Chunk * ChunkSize;
+        Body(Begin, (std::min)(Count, Begin + ChunkSize));
+    });
+}
+}
 
 FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
 
@@ -28,32 +55,63 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     ZoneScopedN("CollectScenePrimitives");
     auto& ResLib = FRenderResourceLibrary::Get();
 
-    FFrustum CullingFrustum = View.Camera->CreateFrustum();
-
     // D3D 클립 변환을 ViewProj에 한 번만 곱해 둔다. 오브젝트마다 MVP에 곱하던 것과 결과는 같다.
     // 이렇게 만든 MVP는 DrawRenderData에서 bConstantsInD3DClip=true로 그린다.
     const FMatrix ViewProjD3D = View.ViewProj * FRenderer::GetUnrealClipToD3DClip();
 
-    int CulledObjects = 0;
+    // 1) 후보: 프러스텀 컬링 없이 씬의 모든 렌더 컴포넌트를 그린다 (화면 밖은 GPU 클리핑에 맡김).
+    //    실험: 전부 보이는 씬에서는 컬링 비용(옥트리 질의 + 오브젝트별 AABB/프러스텀 검사)이 순수 손해라서 뺐다.
+    const TArray<UMeshComponent*>& Candidates = Scene.GetRenderComponents();
 
-    for (auto& MeshComponent : Scene.GetRenderComponents())
+    // 2) 병렬 단계: 컴포넌트별 월드 행렬·카메라 거리를 계산한다.
+    //    여기서는 읽기만 하는 함수만 호출한다 (상태를 바꾸는 머티리얼 조회 등은 3단계에서 순차로).
+    const FCamera& Camera = *View.Camera;
+    const float NearZ = Camera.Projection.NearZ;
+    const float FarZ = Camera.Projection.FarZ;
+    const uint64 ShowFlags = static_cast<uint64>(View.ShowFlags);
+
+    CullResults.resize(Candidates.size());
     {
-        if (!MeshComponent) continue;
-
-        const FMatrix World = MeshComponent->GetRenderMatrix(*View.Camera);
-        FAxisAlignedBoundingBox WorldBounds(MeshComponent->GetLocalBounds(), World);
-
-        if (!CullingFrustum.Intersects(WorldBounds))
+        ZoneScopedN("Transform (parallel)");
+        ParallelForRange(Candidates.size(), [&](size_t Begin, size_t End)
         {
-            CulledObjects++;
-            continue;
-        }
+            for (size_t i = Begin; i < End; ++i)
+            {
+                FPrimitiveCullResult& Result = CullResults[i];
+                Result.bVisible = false;
 
-        // 쇼 플래그 확인
-        if ((static_cast<uint64>(View.ShowFlags) & static_cast<uint64>(MeshComponent->GetShowFlag())) == 0)
-        {
-            continue;
-        }
+                UMeshComponent* MeshComponent = Candidates[i];
+                if (!MeshComponent) continue;
+
+                // 쇼 플래그 확인
+                if ((ShowFlags & static_cast<uint64>(MeshComponent->GetShowFlag())) == 0) continue;
+
+                Result.World = MeshComponent->GetRenderMatrix(Camera);
+
+                // 정렬 키용 카메라 거리 (Near~Far를 24비트로 양자화)
+                const FVector CameraToMesh = MeshComponent->GetGlobalTransform().Location - Camera.Position;
+                float Distance = CameraToMesh.Size();
+                Distance = Distance < FarZ ? Distance : FarZ;
+                Distance = Distance > NearZ ? Distance : NearZ;
+                const float NormalizedDistance = (Distance - NearZ) / (FarZ - NearZ);
+                Result.QuantizedDistance = static_cast<uint32>(0xffffff * NormalizedDistance);
+
+                Result.bVisible = true;
+            }
+        });
+    }
+
+    TracyPlot("Render Components", static_cast<int64_t>(Candidates.size()));
+
+    // 3) 순차 단계: 보이는 컴포넌트의 렌더 데이터를 만들어 큐에 넣는다.
+    for (size_t CandidateIndex = 0; CandidateIndex < Candidates.size(); ++CandidateIndex)
+    {
+        const FPrimitiveCullResult& Cull = CullResults[CandidateIndex];
+        if (!Cull.bVisible) continue;
+
+        UMeshComponent* MeshComponent = Candidates[CandidateIndex];
+        const FMatrix& World = Cull.World;
+        const uint32 QuantizedDistance = Cull.QuantizedDistance;
 
         bool bSelected = false;
         if (MeshComponent->GetActorOwner() && MeshComponent->GetActorOwner() == SelectedActor)
@@ -85,15 +143,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
 
         const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
-
-        FVector CameraToMesh = MeshComponent->GetGlobalTransform().Location - View.Camera->Position;
-        float Distance = CameraToMesh.Size();
-        Distance = Distance < View.Camera->Projection.FarZ ? Distance : View.Camera->Projection.FarZ;
-        Distance = Distance > View.Camera->Projection.NearZ ? Distance : View.Camera->Projection.NearZ;
-        float DistanceMax = View.Camera->Projection.FarZ - View.Camera->Projection.NearZ;
-        float DistanceMin = View.Camera->Projection.NearZ;
-        float NormalizedDistance = (Distance - DistanceMin) / (DistanceMax);
-        uint32 QuantizedDistance = static_cast<uint32>(0xffffff * NormalizedDistance);
 
         // 슬롯별 RenderData 순회 처리
         for (FRenderData& Data : RenderDatas)

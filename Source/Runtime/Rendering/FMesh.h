@@ -81,6 +81,9 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> IndexBuffer;
 	uint32 IndexCount = 0u;
 	uint32 IndexBufferSize = 0u;
+	// 정적 메시는 정점이 65536개 이하면 16비트 인덱스로 올려 인덱스 대역폭을 절반으로 줄인다.
+	// CPU 측 Indices는 항상 32비트다.
+	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R32_UINT;
 
 	TArray<FVector> Positions;
 	TArray<uint32> Indices;

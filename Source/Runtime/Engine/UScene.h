@@ -103,6 +103,9 @@ public:
 
   // 공간 조회용 옥트리. 예약된 갱신을 반영한 뒤 반환한다 (프레임 중간에 바뀐 것에 대한 안전장치).
   [[nodiscard]] FSceneOctree& GetSceneOctree();
+  // 렌더링용 읽기 전용 접근. Flush하지 않으므로, 이번 프레임 변경은 렌더 전에
+  // FlushSceneOctree()로 반영되어 있어야 한다 (FEditor::Process가 매 프레임 호출).
+  [[nodiscard]] const FSceneOctree& GetSceneOctreeForRendering() const { return SceneOctree; }
 
   void RemoveActor(AActor* Actor);
 
