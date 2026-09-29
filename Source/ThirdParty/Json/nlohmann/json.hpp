@@ -20329,8 +20329,7 @@ public:
         result["platform"] = "win32";
 #elif defined __linux__
         result["platform"] = "linux";
-#elif defined __
-        __
+#elif defined __APPLE__
         result["platform"] = "apple";
 #elif defined __unix__
         result["platform"] = "unix";

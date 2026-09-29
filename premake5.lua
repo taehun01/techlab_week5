@@ -3,7 +3,8 @@
 
 workspace "MyEngine"
     location "."
-    configurations { "Debug", "Release", "ObjViewerDebug", "Analysis" }
+    -- Profile: Release와 같은 최적화 + Tracy 계측. 성능 측정 전용이며 제출/배포에는 Release를 쓴다.
+    configurations { "Debug", "Release", "Profile", "ObjViewerDebug", "Analysis" }
     platforms { "x64", "Win32" }
     startproject "MyEngine"
 
@@ -22,6 +23,7 @@ externalproject "DirectXTK_Desktop_2026"
     configmap {
         ["ObjViewerDebug"] = "Debug",
         ["Analysis"]       = "Debug",
+        ["Profile"]        = "Release",
     }
 
 project "MyEngine"
@@ -64,9 +66,6 @@ project "MyEngine"
     }
 
     defines { "NOMINMAX", "_CONSOLE" }
-    -- Tracy 프로파일러 (뷰어: tracy-profiler.exe v0.14.1). ON_DEMAND라 뷰어가 연결됐을 때만 수집한다.
-    -- 계측을 완전히 빼려면 TRACY_ENABLE을 지운다(매크로가 전부 비어 비용이 없다).
-    defines { "TRACY_ENABLE", "TRACY_ON_DEMAND" }
     buildoptions { "/utf-8", "/FS" }
 
     links {
@@ -109,13 +108,19 @@ project "MyEngine"
         runtime "Debug"
         optimize "Off"
 
-    filter "configurations:Release"
+    filter "configurations:Release or Profile"
         defines { "NDEBUG" }
         runtime "Release"
         optimize "Speed"
         functionlevellinking "On"
         intrinsics "On"
         linktimeoptimization "On"
+
+    -- Tracy 프로파일러 (뷰어: tracy-profiler.exe v0.14.1)는 Profile 구성에서만 켠다.
+    -- 켜면 실행 시 TCP 포트(8086)를 열어 두므로 방화벽 허용 창이 뜰 수 있다. 다른 구성은 매크로가 전부 비어 비용이 없다.
+    -- ON_DEMAND라 뷰어가 연결됐을 때만 수집한다.
+    filter "configurations:Profile"
+        defines { "TRACY_ENABLE", "TRACY_ON_DEMAND" }
 
     filter "configurations:ObjViewerDebug"
         defines { "IS_OBJ_VIEWER=1" }
@@ -131,7 +136,7 @@ project "MyEngine"
         forceincludes { "Runtime/Core/Log.h" }
 
     -- 빌드 전: png/jpg -> dds 변환
-    filter { "platforms:x64", "configurations:Debug or ObjViewerDebug or Release" }
+    filter { "platforms:x64", "configurations:Debug or ObjViewerDebug or Release or Profile" }
         prebuildmessage "Convert Png to dds"
         prebuildcommands { 'call "$(ProjectDir)ConvertTextures.bat"' }
 
