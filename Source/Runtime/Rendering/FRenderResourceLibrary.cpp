@@ -68,9 +68,11 @@ const FPipelineEntry pipelineTable[] = {
         .BlendMode = EBlendMode::Translucent,
     },
     {
+        // OBJ 불투명 머티리얼 기본 파이프라인. 조명이 꺼져 있어 UV만 넘기는 경량 셰이더를 쓴다.
+        // 조명을 다시 켜면 ExampleVS.cso / TexturedPS.cso로 되돌린다.
         .Id = FName("Textured"),
-        .VertexShader = L"ExampleVS.cso",
-        .PixelShader = L"TexturedPS.cso",
+        .VertexShader = L"TexturedUnlitVS.cso",
+        .PixelShader = L"TexturedUnlitPS.cso",
         .BlendMode = EBlendMode::Opaque,
     },
     {
