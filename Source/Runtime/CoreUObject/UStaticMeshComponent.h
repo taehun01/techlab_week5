@@ -23,6 +23,7 @@ public:
     void UpdateLocalBounds() override;
 
     TArray<FRenderData> GetRenderDatas(const FCamera& Camera) override;
+    void AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas) override;
     const FRenderData& GetPureRenderData() const override;
 
     // 머티리얼 오버라이드
@@ -37,6 +38,10 @@ public:
 
 protected:
     UStaticMeshComponent() = default;
+
+    // GetMaterial(Slot)과 같은 규칙으로 머티리얼을 정해 OutData에 채운다.
+    // 메시 슬롯의 머티리얼이면 포인터까지 넘겨 렌더러의 이름 조회를 생략한다.
+    void FillMaterial(int32 Slot, FRenderData& OutData) const;
 
     UStaticMesh* StaticMesh = nullptr;
     TArray<FName> OverrideMaterials;

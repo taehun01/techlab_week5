@@ -109,8 +109,13 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
             // 머티리얼의 블렌드 모드에 따라 불투명 및 반투명 패스 자동 분기
             // 메시/머티리얼은 여기서 한 번만 조회해 RenderData에 포인터로 보관
-            FMaterial* Material = ResLib.GetMaterial(Data.MaterialId).get();
-            Data.MeshPtr = ResLib.GetMesh(Data.MeshId).get();
+            // 컴포넌트가 머티리얼 포인터를 채워 줬으면 문자열 맵 조회를 건너뛴다
+            FMaterial* Material = Data.MaterialPtr ? Data.MaterialPtr : ResLib.GetMaterial(Data.MaterialId).get();
+            // 컴포넌트가 메시 포인터를 채워 줬으면 문자열 맵 조회를 건너뛴다
+            if (!Data.MeshPtr)
+            {
+                Data.MeshPtr = ResLib.GetMesh(Data.MeshId).get();
+            }
             Data.MaterialPtr = Material ? Material : ResLib.GetMaterial(FName("Simple")).get();
 
             if (Material && (Material->GetBlendMode() == EBlendMode::Additive || Material->GetBlendMode() == EBlendMode::Translucent))

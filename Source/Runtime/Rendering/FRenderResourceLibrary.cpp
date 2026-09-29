@@ -675,8 +675,9 @@ bool FRenderResourceLibrary::CreateUStaticMeshMap() {
         }
         else
         {
-            StaticMeshObj->Materials.push_back("Simple_Solid");
-            RegisterMeshMaterialDependency(Key, "Simple_Solid");
+            // "Simple_Solid"는 파이프라인 이름이라 머티리얼 조회가 매 프레임 실패했다. 실제 머티리얼 키는 "Simple"이다.
+            StaticMeshObj->Materials.push_back("Simple");
+            RegisterMeshMaterialDependency(Key, "Simple");
         }
 
         AllUStaticMeshMap[Key] = StaticMeshObj;
