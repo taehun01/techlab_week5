@@ -58,7 +58,9 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
 
 
-        TArray<FRenderData> RenderDatas = MeshComponent->GetRenderDatas(*View.Camera);
+        TArray<FRenderData>& RenderDatas = ComponentRenderDatas;
+        RenderDatas.clear();
+        MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas);
         // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
         if (RenderDatas.empty()) continue;
 
@@ -409,24 +411,75 @@ void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& Pip
     Renderer.FlushLineBatch(Constants, PipelineId);
 }
 
-void FRenderView::DrawRenderData(const FRenderData& Data)
+bool FRenderView::ResolveDrawResources(const FRenderData& Data, FStaticMesh*& OutMesh, FMaterial*& OutMaterial)
 {
-    FStaticMesh* Mesh = Data.MeshPtr;
-    FMaterial* Material = Data.MaterialPtr;
+    OutMesh = Data.MeshPtr;
+    OutMaterial = Data.MaterialPtr;
 
     // 수집 단계를 거치지 않은 데이터 대비 폴백 조회
-    if (!Mesh || !Material)
+    if (!OutMesh || !OutMaterial)
     {
         auto& ResLib = FRenderResourceLibrary::Get();
-        if (!Mesh) Mesh = ResLib.GetMesh(Data.MeshId).get();
-        if (!Material) Material = ResLib.GetMaterial(Data.MaterialId).get();
-        if (!Material) Material = ResLib.GetMaterial(FName("Simple")).get();
+        if (!OutMesh) OutMesh = ResLib.GetMesh(Data.MeshId).get();
+        if (!OutMaterial) OutMaterial = ResLib.GetMaterial(Data.MaterialId).get();
+        if (!OutMaterial) OutMaterial = ResLib.GetMaterial(FName("Simple")).get();
     }
 
-    if (!Mesh || !Material) return;
+    return OutMesh && OutMaterial;
+}
+
+void FRenderView::DrawRenderData(const FRenderData& Data)
+{
+    FStaticMesh* Mesh = nullptr;
+    FMaterial* Material = nullptr;
+    if (!ResolveDrawResources(Data, Mesh, Material)) return;
 
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
     Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount);
+}
+
+bool FRenderView::UploadQueuedObjectConstants()
+{
+    const auto& OpaqueSortKeys = RenderQueue.GetOpaqueSortKeys();
+    const auto& TranslucentSortKeys = RenderQueue.GetTranslucentSortKeys();
+    const uint32 TotalCount = static_cast<uint32>(OpaqueSortKeys.size() + TranslucentSortKeys.size());
+
+    if (!Renderer.BeginObjectConstantBatch(TotalCount)) return false;
+
+    ZoneScopedN("Upload Object Constants");
+
+    // 드로우 순서대로 슬롯을 배정해 쓰기가 버퍼 앞에서부터 순차적으로 일어나게 한다.
+    const auto WriteSlot = [this](uint32 Slot, const FRenderData& Data)
+    {
+        FStaticMesh* Mesh = nullptr;
+        FMaterial* Material = nullptr;
+        if (ResolveDrawResources(Data, Mesh, Material))
+        {
+            Renderer.WriteObjectConstants(Slot, Data.Constants, *Material);
+        }
+    };
+
+    uint32 Slot = 0u;
+    for (const auto& [SortKey, Index] : OpaqueSortKeys)
+    {
+        WriteSlot(Slot++, RenderQueue.GetOpaqueRenderQ()[Index]);
+    }
+    for (const auto& [SortKey, Index] : TranslucentSortKeys)
+    {
+        WriteSlot(Slot++, RenderQueue.GetTranslucentRenderQ()[Index]);
+    }
+
+    Renderer.EndObjectConstantBatch();
+    return true;
+}
+
+void FRenderView::DrawRenderDataBatched(const FRenderData& Data, uint32 Slot)
+{
+    FStaticMesh* Mesh = nullptr;
+    FMaterial* Material = nullptr;
+    if (!ResolveDrawResources(Data, Mesh, Material)) return;
+
+    Renderer.DrawWithObjectConstants(*Mesh, *Material, Slot, Data.startidx, Data.indicesCount);
 }
 
 
@@ -436,13 +489,20 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     TracyPlot("Opaque Draws", static_cast<int64_t>(RenderQueue.GetOpaqueRenderQ().size()));
     TracyPlot("Translucent Draws", static_cast<int64_t>(RenderQueue.GetTranslucentRenderQ().size()));
 
+    // 불투명+반투명 상수를 한 번에 올리고, 드로우마다 버퍼 오프셋만 바꾼다.
+    // 슬롯 번호는 UploadQueuedObjectConstants의 기록 순서(불투명 → 반투명)와 같다.
+    const bool bBatched = UploadQueuedObjectConstants();
+    uint32 Slot = 0u;
+
     // 불투명 패스
     {
         ZoneScopedN("Opaque");
         TracyD3D11Zone(Renderer.GetGpuProfiler(), "Opaque");
         for (const auto& [SortKey, Index] : RenderQueue.GetOpaqueSortKeys())
         {
-            DrawRenderData(RenderQueue.GetOpaqueRenderQ()[Index]);
+            const FRenderData& Data = RenderQueue.GetOpaqueRenderQ()[Index];
+            if (bBatched) DrawRenderDataBatched(Data, Slot++);
+            else DrawRenderData(Data);
         }
     }
 
@@ -463,7 +523,9 @@ void FRenderView::FlushQueue(const FCamera& Camera)
         TracyD3D11Zone(Renderer.GetGpuProfiler(), "Translucent");
         for (const auto& [SortKey, Index] : RenderQueue.GetTranslucentSortKeys())
         {
-            DrawRenderData(RenderQueue.GetTranslucentRenderQ()[Index]);
+            const FRenderData& Data = RenderQueue.GetTranslucentRenderQ()[Index];
+            if (bBatched) DrawRenderDataBatched(Data, Slot++);
+            else DrawRenderData(Data);
         }
     }
 

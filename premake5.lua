@@ -87,6 +87,9 @@ project "MyEngine"
     filter "files:Source/ThirdParty/tracy/**.cpp"
         warnings "Off"
 
+    filter "files:Source/ThirdParty/meshoptimizer/**.cpp"
+        warnings "Off"
+
     -- HLSL (Shader Model 5.0, 결과물은 $(OutDir)Shader\*.cso)
     filter "files:**.hlsl"
         shadermodel "5.0"

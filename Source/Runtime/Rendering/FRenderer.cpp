@@ -18,7 +18,9 @@
 #include "Runtime/CoreUObject/UStaticMesh.h"
 #include "Editor/Grid/FGrid.h"
 #include <Windows.h>
+#include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
@@ -55,6 +57,9 @@ void FRenderer::Shutdown() {
 
   b0ConstantBuffer.Reset();
   FrameConstantBuffer.Reset();
+  ObjectConstantBatchBuffer.Reset();
+  ObjectConstantBatchCapacity = 0u;
+  Context1.Reset();
 
   BackBufferRTV.Reset();
   DepthStencilView.Reset();
@@ -112,6 +117,63 @@ void FRenderer::ClearDepth() {
 }
 
 // VSync 끔: 프레임을 제한하지 않는다.
+bool FRenderer::BeginObjectConstantBatch(uint32 Count) {
+  if (!bSupportsConstantBufferOffset || Count == 0u) {
+    return false;
+  }
+
+  if (Count > ObjectConstantBatchCapacity) {
+    // 오브젝트 수가 늘 때마다 재생성하지 않도록 여유를 두고 키운다.
+    const uint32 NewCapacity = std::max(Count + Count / 4u, 1024u);
+    const D3D11_BUFFER_DESC Desc = {
+        .ByteWidth = NewCapacity * ObjectConstantSlotSize,
+        .Usage = D3D11_USAGE_DYNAMIC,
+        .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+        .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+    };
+    Microsoft::WRL::ComPtr<ID3D11Buffer> NewBuffer;
+    if (FAILED(Device->CreateBuffer(&Desc, nullptr, &NewBuffer))) {
+      return false;
+    }
+    ObjectConstantBatchBuffer = NewBuffer;
+    ObjectConstantBatchCapacity = NewCapacity;
+  }
+
+  D3D11_MAPPED_SUBRESOURCE Mapped{};
+  if (FAILED(Context->Map(ObjectConstantBatchBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &Mapped))) {
+    return false;
+  }
+  MappedObjectConstants = static_cast<uint8*>(Mapped.pData);
+  return true;
+}
+
+void FRenderer::WriteObjectConstants(uint32 Index, const FObjectConstants& Constants, const FMaterial& Material) {
+  FObjectConstants ShaderConstants = Constants;
+  ShaderConstants.MaterialDiffuse = Material.GetDiffuseColor();
+  ConvertToD3DClip(ShaderConstants);
+  std::memcpy(MappedObjectConstants + static_cast<size_t>(Index) * ObjectConstantSlotSize,
+              &ShaderConstants, sizeof(ShaderConstants));
+}
+
+void FRenderer::EndObjectConstantBatch() {
+  Context->Unmap(ObjectConstantBatchBuffer.Get(), 0);
+  MappedObjectConstants = nullptr;
+}
+
+void FRenderer::DrawWithObjectConstants(const FStaticMesh& InMesh, const FMaterial& InMaterial,
+                                        uint32 Index, int32 startidx, int32 indicesCount) {
+  ID3D11Buffer* Buffer = ObjectConstantBatchBuffer.Get();
+  const UINT FirstConstant = Index * ObjectConstantSlotConstants;
+  const UINT NumConstants = ObjectConstantSlotConstants;
+  Context1->VSSetConstantBuffers1(0u, 1u, &Buffer, &FirstConstant, &NumConstants);
+  Context1->PSSetConstantBuffers1(0u, 1u, &Buffer, &FirstConstant, &NumConstants);
+  // b0가 배치 버퍼로 바뀌었으므로 일반 Draw 경로는 다시 b0ConstantBuffer를 바인딩해야 한다.
+  CurrentRenderState.bIsConstantBufferBind = false;
+
+  BindDrawState(InMesh, InMaterial, true);
+  IssueDraw(InMesh, startidx, indicesCount);
+}
+
 void FRenderer::SwapBuffer() {
   {
     ZoneScopedN("Present");
@@ -497,6 +559,13 @@ bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
       &SwapChainDesc, &SwapChain, &Device, nullptr, &Context);
   if (FAILED(Result)) {
     return false;
+  }
+
+  // 상수 버퍼 오프셋(VSSetConstantBuffers1) 지원 여부. 없으면 드로우별 Map 경로를 쓴다.
+  D3D11_FEATURE_DATA_D3D11_OPTIONS Options{};
+  if (SUCCEEDED(Context.As(&Context1)) &&
+      SUCCEEDED(Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &Options, sizeof(Options)))) {
+    bSupportsConstantBufferOffset = Options.ConstantBufferOffsetting == TRUE;
   }
 
   RECT ClientRect{};

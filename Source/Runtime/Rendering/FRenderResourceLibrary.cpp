@@ -18,6 +18,7 @@
 #include "Runtime/Rendering/FRenderer.h"
 #include "Runtime/Core/FStatRegistry.h"
 #include "Runtime/Core/Log.h"
+#include "ThirdParty/meshoptimizer/meshoptimizer.h"
 #include <cmath>
 #include <d3dcompiler.h>
 #include <numbers>
@@ -1702,8 +1703,35 @@ bool FRenderResourceLibrary::CreateObjMeshes()
         if (Decoder.LoadObj(ObjPath, BinaryPath, ModelData) == false)
         {
             UE_LOG_WARN("[OBJ Loader] 로딩 실패: %s", ObjPath.c_str());
-            
+
             continue;
+        }
+
+        // GPU 정점 캐시 재사용률을 높이도록 삼각형 순서를 재정렬한다(그려지는 결과는 같다).
+        // 섹션마다 따로 드로우하므로 섹션 인덱스 구간 안에서만 섞어 경계를 유지한다.
+        if (!ModelData.Indices.empty())
+        {
+            const size_t VertexCount = ModelData.Vertices.size();
+            const auto Before = meshopt_analyzeVertexCache(ModelData.Indices.data(), ModelData.Indices.size(), VertexCount, 16, 0, 0);
+
+            const auto OptimizeRange = [&](size_t FirstIndex, size_t IndexCount)
+            {
+                if (IndexCount < 3 || FirstIndex + IndexCount > ModelData.Indices.size()) return;
+                uint32* Range = ModelData.Indices.data() + FirstIndex;
+                meshopt_optimizeVertexCache(Range, Range, IndexCount, VertexCount);
+            };
+
+            if (ModelData.Sections.empty())
+            {
+                OptimizeRange(0, ModelData.Indices.size());
+            }
+            for (const FMeshSection& Section : ModelData.Sections)
+            {
+                OptimizeRange(Section.FirstIndex, Section.IndexCount);
+            }
+
+            const auto After = meshopt_analyzeVertexCache(ModelData.Indices.data(), ModelData.Indices.size(), VertexCount, 16, 0, 0);
+            UE_LOG("[OBJ Loader] 정점 캐시 최적화: %s ACMR %.3f -> %.3f", StemName.c_str(), Before.acmr, After.acmr);
         }
 
         FMeshDesc Desc
