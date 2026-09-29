@@ -46,3 +46,41 @@ bool IntersectRayAABB(const FRay& Ray, const FAxisAlignedBoundingBox& Box, float
 	OutTNear = TNear;
 	return true;
 }
+
+bool IntersectRayTriangle(const FRay& Ray, const FVector& A, const FVector& B, const FVector& C, float& OutT)
+{
+	constexpr float Epsilon = 0.000001f;
+
+	const FVector Edge1 = B - A;
+	const FVector Edge2 = C - A;
+
+	const FVector PVector = Ray.Direction.Cross(Edge2);
+	const float Determinant = Edge1.Dot(PVector);
+
+	// 광선과 삼각형 평면이 평행함
+	if (std::abs(Determinant) < Epsilon)
+	{
+		return false;
+	}
+
+	const float InverseDeterminant = 1.0f / Determinant;
+
+	// Barycentric u
+	const FVector TVector = Ray.Origin - A;
+	const float U = TVector.Dot(PVector) * InverseDeterminant;
+	if (U < 0.0f || U > 1.0f)
+	{
+		return false;
+	}
+
+	// Barycentric v
+	const FVector QVector = TVector.Cross(Edge1);
+	const float V = Ray.Direction.Dot(QVector) * InverseDeterminant;
+	if (V < 0.0f || U + V > 1.0f)
+	{
+		return false;
+	}
+
+	OutT = Edge2.Dot(QVector) * InverseDeterminant;
+	return OutT > Epsilon;
+}
