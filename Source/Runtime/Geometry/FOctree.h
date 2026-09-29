@@ -44,6 +44,7 @@ private:
 	{
 		FVector Center;
 		float HalfSize = 0.0f;
+		int32 Parent = -1;
 		int32 FirstChild = -1;
 		int32 Depth = 0;
 	};
@@ -56,6 +57,7 @@ private:
 
 	FOctreeSettings Settings;
 	TArray<FNode> Nodes;
+
 	TArray<int32> FreeNodeBlocks;
 	TArray<TArray<FOctreeElement>> Elements;
 	TMap<int32, FElementId> ElementIdByObjectIndex;
@@ -64,4 +66,5 @@ private:
 	void Split(int32 NodeIndex);
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutObjects, int32 NodeIndex) const;
 	void QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits, int32 NodeIndex) const;
+	void TryMerge(int32 NodeIndex);
 };

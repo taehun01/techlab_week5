@@ -105,6 +105,8 @@ void FOctree::Remove(int32 ObjectIndex)
 		ElementIdByObjectIndex[NodeElements[SlotIndex].ObjectIndex].SlotIndex = SlotIndex;
 	}
 	NodeElements.pop_back();
+
+	TryMerge(NodeIndex);
 }
 
 void FOctree::Update(int32 ObjectIndex, const FAxisAlignedBoundingBox& NewBounds)
@@ -175,8 +177,11 @@ void FOctree::Split(int32 NodeIndex)
 		int32 ChildIndex = Node.FirstChild + I;
 		Nodes[ChildIndex].Center = Node.Center + FVector(X, Y, Z);
 		Nodes[ChildIndex].HalfSize = Half;
+		Nodes[ChildIndex].Parent = NodeIndex;
 		Nodes[ChildIndex].FirstChild = -1;
 		Nodes[ChildIndex].Depth = Node.Depth + 1;
+
+		Elements[ChildIndex].clear();
 	}
 
 	TArray<FOctreeElement> Temp;
@@ -256,5 +261,49 @@ void FOctree::QueryRay(const FRay& Ray, TArray<FOctreeRayHit>& OutHits, int32 No
 		{
 			QueryRay(Ray, OutHits, ChildIndex);
 		}
+	}
+}
+
+void FOctree::TryMerge(int32 NodeIndex)
+{
+	// 리프면 부모부터 검사
+	if (NodeIndex != -1 && Nodes[NodeIndex].FirstChild == -1)
+	{
+		NodeIndex = Nodes[NodeIndex].Parent;
+	}
+
+	while (NodeIndex != -1)
+	{
+		const int32 FirstChild = Nodes[NodeIndex].FirstChild;
+
+		int32 NumElem = static_cast<int32>(Elements[NodeIndex].size());
+		for (int32 I = 0; I < 8; I++)
+		{
+			if (Nodes[FirstChild + I].FirstChild != -1)
+			{
+				return;
+			}
+			NumElem += static_cast<int32>(Elements[FirstChild + I].size());
+		}
+
+		if (NumElem * 2 > Settings.MaxElementsPerNode)
+		{
+			return;
+		}
+
+		// Merge
+		for (int32 I = 0; I < 8; I++)
+		{
+			for (const auto& Elem : Elements[FirstChild + I])
+			{
+				AddToNode(NodeIndex, Elem);
+			}
+			Elements[FirstChild + I].clear();
+		}
+
+		Nodes[NodeIndex].FirstChild = -1;
+		FreeNodeBlocks.push_back(FirstChild);
+
+		NodeIndex = Nodes[NodeIndex].Parent;
 	}
 }
