@@ -16,7 +16,6 @@
 
 #include <Windows.h>
 #include <d3d11.h>
-#include <d3d11_1.h>
 #include <filesystem>
 #include <wrl/client.h>
 #include "ThirdParty/tracy/tracy/Tracy.hpp"
@@ -143,24 +142,6 @@ public:
     // Tracy GPU 구간 계측용 컨텍스트. TracyD3D11Zone(Renderer.GetGpuProfiler(), "이름")으로 쓴다.
     [[nodiscard]] TracyD3D11Ctx GetGpuProfiler() const { return GpuProfiler; }
 
-    // 오브젝트 상수 일괄 업로드 (D3D11.1 상수 버퍼 오프셋).
-    // 드로우마다 256B 버퍼를 Map(DISCARD)하면 드라이버가 매번 버퍼를 리네이밍해야 해서
-    // 드로우 수만큼 비용이 쌓인다. 대신 한 프레임 분량을 큰 버퍼에 한 번에 쓰고
-    // 드로우마다 오프셋만 바꿔 바인딩한다. 지원하지 않는 환경에서는 기존 Draw 경로를 쓴다.
-    // Count개 슬롯을 쓸 수 있도록 버퍼를 Map한다. 실패하면 false.
-    bool BeginObjectConstantBatch(uint32 Count);
-    // Begin~End 사이에서 Index번 슬롯에 오브젝트 상수를 기록한다.
-    void WriteObjectConstants(uint32 Index, const FObjectConstants& Constants, const FMaterial& Material);
-    void EndObjectConstantBatch();
-    // End 이후 Index번 슬롯의 상수로 드로우한다.
-    void DrawWithObjectConstants(
-        const FStaticMesh& InMesh,
-        const FMaterial& InMaterial,
-        uint32 Index,
-        int32 startidx = 0,
-        int32 indicesCount = -1
-    );
-
 private:
     bool InitializeDeviceAndSwapChain(HWND Window);
     bool InitializeBackBufferAndDepthStencil();
@@ -182,15 +163,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Buffer> b0ConstantBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> LightConstantBuffer;
-
-    // 상수 버퍼 오프셋은 16개 상수(256B) 단위여야 하므로 슬롯 하나를 256B로 잡는다.
-    static constexpr UINT ObjectConstantSlotSize = 256u;
-    static constexpr UINT ObjectConstantSlotConstants = ObjectConstantSlotSize / 16u;
-    Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context1;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantBatchBuffer;
-    uint32 ObjectConstantBatchCapacity = 0u;
-    uint8* MappedObjectConstants = nullptr;
-    bool bSupportsConstantBufferOffset = false;
 
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> EditorViewPortRTV;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> EditorViewPortSRV;
@@ -243,14 +215,6 @@ public:
             CurrentRenderState.bIsConstantBufferBind = true;
         }
 
-        BindDrawState(InMesh, InMaterial, bApplyViewMode);
-        IssueDraw(InMesh, startidx, indicesCount);
-    }
-
-private:
-    // 파이프라인/머티리얼/메시가 이전 드로우와 다를 때만 재바인딩한다.
-    void BindDrawState(const FStaticMesh& InMesh, const FMaterial& InMaterial, bool bApplyViewMode)
-    {
         FRenderPipeline* Pipeline = InMaterial.Pipeline.get();
         if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe)
         {
@@ -275,10 +239,7 @@ private:
             CurrentRenderState.Mesh = &InMesh;
             CurrentRenderState.Mesh->BindResources(*Context.Get());
         }
-    }
 
-    void IssueDraw(const FStaticMesh& InMesh, int32 startidx, int32 indicesCount)
-    {
         STATS.UpdateDrawCallCount(InMesh.GetIndexCount(), InMesh.GetVertexCount());
 
         // 외부에서 indicesCount를 양수로 지정한 경우 해당 섹션 범위만 1회 드로우
@@ -299,25 +260,10 @@ private:
         }
     }
 
+private:
     void BindConstantBuffer(uint32 Slot = 0u) {
         Context->VSSetConstantBuffers(Slot, 1u, b0ConstantBuffer.GetAddressOf());
         Context->PSSetConstantBuffers(Slot, 1u, b0ConstantBuffer.GetAddressOf());
-    }
-
-    // 엔진(언리얼) 클립 좌표계를 D3D 클립 좌표계로 바꾼다.
-    template <typename TConstants>
-    static void ConvertToD3DClip(TConstants& ShaderConstants) {
-        static const FMatrix UnrealClipToD3DClip{
-            FVector{ 0.0f, 0.0f, 1.0f }, FVector{ 1.0f, 0.0f, 0.0f },
-            FVector{ 0.0f, 1.0f, 0.0f }, FVector{ 0.0f, 0.0f, 0.0f } };
-
-        if constexpr (requires { ShaderConstants.MVP; }) {
-            ShaderConstants.MVP *= UnrealClipToD3DClip;
-        }
-
-        if constexpr (requires { ShaderConstants.VP; }) {
-            ShaderConstants.VP *= UnrealClipToD3DClip;
-        }
     }
 
     template <typename TConstants>
@@ -326,7 +272,19 @@ private:
         static_assert(sizeof(TConstants) % 16 == 0);
 
         TConstants ShaderConstants = Constants;
-        ConvertToD3DClip(ShaderConstants);
+        if constexpr (requires { ShaderConstants.MVP; }) {
+            static const FMatrix UnrealClipToD3DClip{
+                FVector{ 0.0f, 0.0f, 1.0f }, FVector{ 1.0f, 0.0f, 0.0f },
+                FVector{ 0.0f, 1.0f, 0.0f }, FVector{ 0.0f, 0.0f, 0.0f } };
+            ShaderConstants.MVP *= UnrealClipToD3DClip;
+        }
+
+        if constexpr (requires { ShaderConstants.VP; }) {
+            static const FMatrix UnrealClipToD3DClip{
+                FVector{ 0.0f, 0.0f, 1.0f }, FVector{ 1.0f, 0.0f, 0.0f },
+                FVector{ 0.0f, 1.0f, 0.0f }, FVector{ 0.0f, 0.0f, 0.0f } };
+            ShaderConstants.VP *= UnrealClipToD3DClip;
+        }
 
         D3D11_MAPPED_SUBRESOURCE Mapped{};
         if (FAILED(Context->Map(b0ConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD,

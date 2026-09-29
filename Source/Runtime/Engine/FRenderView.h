@@ -27,16 +27,8 @@ class FRenderView final {
 	// 매 컴포넌트마다 clear만 하고 용량은 유지해 오브젝트별 할당/해제를 없앤다.
 	TArray<FRenderData> ComponentRenderDatas;
 
-	// 렌더 데이터가 가리키는 메시/머티리얼을 찾는다. 둘 중 하나라도 없으면 false
-	static bool ResolveDrawResources(const FRenderData& Data, FStaticMesh*& OutMesh, FMaterial*& OutMaterial);
-
 	// 개별 렌더 데이터 드로우
 	void DrawRenderData(const FRenderData& Data);
-
-	// 불투명/반투명 큐의 오브젝트 상수를 한 번에 업로드한다. 성공하면 true
-	bool UploadQueuedObjectConstants();
-	// UploadQueuedObjectConstants로 올린 Slot번 상수로 드로우
-	void DrawRenderDataBatched(const FRenderData& Data, uint32 Slot);
 
 public:
 	FRenderView(FRenderer& Renderer);
