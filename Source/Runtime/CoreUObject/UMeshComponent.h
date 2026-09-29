@@ -40,6 +40,4 @@ protected:
     UMeshComponent() = default;
 
     TArray<FRenderData> RenderDatas;
-
-
 };

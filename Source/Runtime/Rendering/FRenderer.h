@@ -12,6 +12,7 @@
 #include "ShaderConstants.h"
 #include "Vertices.h"
 #include "Runtime/Core/FStatRegistry.h"
+#include "Runtime/Rendering/FRenderState.h"
 
 #include <Windows.h>
 #include <d3d11.h>
@@ -133,6 +134,9 @@ public:
 
     void RenderMeshPreviewScene(FPreviewRenderTarget& RenderTarget, const FCamera& Camera, UStaticMesh* TargetMesh, uint32 Width, uint32 Height, bool bDrawGrid = false, TSharedPtr<FMaterial> OverrideMaterial=nullptr);
     void RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, const FCamera& Camera, TSharedPtr<FStaticMesh> Meshasset,  TSharedPtr<FMaterial> Material, uint32 Width, uint32 Height, bool bDrawGrid = false);
+
+    void ResetRenderState() { CurrentRenderState.Reset(); }
+
 private:
     bool InitializeDeviceAndSwapChain(HWND Window);
     bool InitializeBackBufferAndDepthStencil();
@@ -166,22 +170,24 @@ private:
     UINT TextInstanceBufferSize = 0;
 
     EViewModeIndex CurrentRenderMode = EViewModeIndex::VMI_Lit;
-
+    FRenderState CurrentRenderState;
 public:
     template <typename TConstants>
     void FlushLineBatch(
         const TConstants& Constants,
         const FName& PipelineId = FName("Simple_Line")
     ) {
-        UpdateBuffer(Constants);
+        UpdateConstantBuffer(Constants);
+        BindConstantBuffer();
         LineBatcher.Flush(*Context.Get(), GetPipeline(PipelineId));
+        ResetRenderState();
     }
 
     // bApplyViewMode=false면 뷰모드(와이어프레임) 오버라이드를 건너뛴다
     template <typename TConstants>
     void Draw(
-        const FStaticMesh& Mesh,
-        const FMaterial& Material,
+        const FStaticMesh& InMesh,
+        const FMaterial& InMaterial,
         const TConstants& Constants,
         int32 startidx = 0,
         int32 indicesCount = -1,
@@ -190,21 +196,45 @@ public:
     )
     {
         TConstants LocalConstants = Constants;
-        LocalConstants.MaterialDiffuse = Material.GetDiffuseColor();
-        UpdateBuffer(LocalConstants, Slot);
-
-        TSharedPtr<FRenderPipeline> Pipeline = Material.Pipeline;
-        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) {
-            Pipeline = GetPipeline(FName("Simple_Wireframe"));
+        LocalConstants.MaterialDiffuse = InMaterial.GetDiffuseColor();
+        UpdateConstantBuffer(LocalConstants);
+        if (Slot != 0u)
+        {
+            // b0 이외 슬롯 요청은 캐시 대상이 아니므로 매번 바인딩
+            BindConstantBuffer(Slot);
         }
-        if (Pipeline) {
+        else if (!CurrentRenderState.bIsConstantBufferBind)
+        {
+            BindConstantBuffer();
+            CurrentRenderState.bIsConstantBufferBind = true;
+        }
+
+        FRenderPipeline* Pipeline = InMaterial.Pipeline.get();
+        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe) 
+        {
+            Pipeline = GetPipeline(FName("Simple_Wireframe")).get();
+        }
+        // 파이프라인 또는 StencilRef가 바뀐 경우에만 재바인딩
+        if (Pipeline &&
+            (Pipeline != CurrentRenderState.Pipeline || Pipeline->GetStencilRef() != CurrentRenderState.StencilRef))
+        {
             Pipeline->Bind(*Context.Get());
+            CurrentRenderState.Pipeline = Pipeline;
+            CurrentRenderState.StencilRef = Pipeline->GetStencilRef();
         }
 
-        Material.BindResources(*Context.Get());
-        Mesh.BindResources(*Context.Get());
+        if (CurrentRenderState.Material != &InMaterial)
+        {
+            CurrentRenderState.Material = &InMaterial;
+            CurrentRenderState.Material->BindResources(*Context.Get());
+        }
+        if (CurrentRenderState.Mesh != &InMesh)
+        {
+            CurrentRenderState.Mesh = &InMesh;
+            CurrentRenderState.Mesh->BindResources(*Context.Get());
+        }
 
-        STATS.UpdateDrawCallCount(Mesh.GetIndexCount(), Mesh.GetVertexCount());
+        STATS.UpdateDrawCallCount(InMesh.GetIndexCount(), InMesh.GetVertexCount());
 
         // 외부에서 indicesCount를 양수로 지정한 경우 해당 섹션 범위만 1회 드로우
         if (indicesCount > 0)
@@ -214,19 +244,24 @@ public:
         }
 
         // 전체를 그리도록 요청받은 경우 (-1)
-        if (Mesh.HasIndices())
+        if (InMesh.HasIndices())
         {
-            Context->DrawIndexed(Mesh.GetIndexCount(), 0, 0);
+            Context->DrawIndexed(InMesh.GetIndexCount(), 0, 0);
         }
         else
         {
-            Context->Draw(Mesh.VertexCount, static_cast<UINT>(startidx));
+            Context->Draw(InMesh.VertexCount, static_cast<UINT>(startidx));
         }
     }
 
 private:
+    void BindConstantBuffer(uint32 Slot = 0u) {
+        Context->VSSetConstantBuffers(Slot, 1u, b0ConstantBuffer.GetAddressOf());
+        Context->PSSetConstantBuffers(Slot, 1u, b0ConstantBuffer.GetAddressOf());
+    }
+
     template <typename TConstants>
-    void UpdateBuffer(const TConstants& Constants, uint32 Slot = 0u) {
+    void UpdateConstantBuffer(const TConstants& Constants) {
         static_assert(sizeof(TConstants) <= ConstantBufferSize);
         static_assert(sizeof(TConstants) % 16 == 0);
 
@@ -252,8 +287,5 @@ private:
         }
         std::memcpy(Mapped.pData, &ShaderConstants, sizeof(TConstants));
         Context->Unmap(b0ConstantBuffer.Get(), 0);
-
-        Context->VSSetConstantBuffers(Slot, 1u, b0ConstantBuffer.GetAddressOf());
-        Context->PSSetConstantBuffers(Slot, 1u, b0ConstantBuffer.GetAddressOf());
     }
 };

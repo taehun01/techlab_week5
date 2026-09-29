@@ -16,6 +16,7 @@ TSharedPtr<FMaterial> FMaterial::Clone() const
     NewMat->MaterialId = this->MaterialId;
     NewMat->Pipeline = this->Pipeline;
     NewMat->WireframePipeline = this->WireframePipeline;
+    NewMat->SortID = this->SortID;
 
     // 슬롯 텍스처 복사
     for (size_t i = 0; i < static_cast<size_t>(EMaterialTextureSlot::Count); ++i)

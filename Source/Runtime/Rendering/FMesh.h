@@ -64,6 +64,7 @@ public:
 
 	FString PathFileName;
 	TArray<FMeshSection> Sections;
+	uint16 SortID = 0u;
 private:
 	void BindResources(ID3D11DeviceContext& Context) const;
 

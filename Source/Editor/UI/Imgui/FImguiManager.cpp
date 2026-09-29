@@ -54,16 +54,16 @@ void FImguiManager::NewFrame()
 
 		ImGuiID RightID = ImGui::DockBuilderSplitNode(MainID, ImGuiDir_Right, 0.33f, nullptr, &MainID);
 		ImGuiID RightRemaining = RightID;
-		ImGuiID PropertyWindowID = ImGui::DockBuilderSplitNode(RightRemaining, ImGuiDir_Up, 0.4f, nullptr, &RightRemaining);
+		//ImGuiID PropertyWindowID = ImGui::DockBuilderSplitNode(RightRemaining, ImGuiDir_Up, 0.4f, nullptr, &RightRemaining);
 		ImGuiID ControlPanelID = RightRemaining;
 
 		ImGuiID ConsoleID = ImGui::DockBuilderSplitNode(MainID, ImGuiDir_Down, 0.25f, nullptr, &MainID);
 
 		ImGui::DockBuilderDockWindow("Viewport", MainID);
-		ImGui::DockBuilderDockWindow("World Outliner", PropertyWindowID);
-		ImGui::DockBuilderDockWindow("Jungle Property Window", PropertyWindowID);
+		//ImGui::DockBuilderDockWindow("World Outliner", PropertyWindowID);
+		//ImGui::DockBuilderDockWindow("Jungle Property Window", PropertyWindowID);
 		ImGui::DockBuilderDockWindow("Jungle Control Panel", ControlPanelID);
-		ImGui::DockBuilderDockWindow("Content Drawer", ConsoleID);
+		//ImGui::DockBuilderDockWindow("Content Drawer", ConsoleID);
 		ImGui::DockBuilderDockWindow("Console Window", ConsoleID);
 
 		ImGui::DockBuilderFinish(DockSpaceID);

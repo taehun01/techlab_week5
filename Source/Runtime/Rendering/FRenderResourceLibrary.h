@@ -164,10 +164,11 @@ public:
     }
 
     // 메쉬 등록
-    TSharedPtr<FStaticMesh> RegisterMesh(const FName& ID, TSharedPtr<FStaticMesh> inMesh) {
-        inMesh->MeshId = ID;
-        AllFStaticMeshMap[ID.ToString()] = inMesh;
-        return inMesh;
+    TSharedPtr<FStaticMesh> RegisterMesh(const FName& ID, TSharedPtr<FStaticMesh> InMesh) {
+        InMesh->MeshId = ID;
+        InMesh->SortID = static_cast<uint16>(AllFStaticMeshMap.size());
+        AllFStaticMeshMap[ID.ToString()] = InMesh;
+        return InMesh;
     }
 
 

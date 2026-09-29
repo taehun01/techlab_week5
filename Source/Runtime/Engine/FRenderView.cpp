@@ -57,7 +57,9 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         }
 
 
-        const auto& RenderDatas = MeshComponent->GetRenderDatas(*View.Camera);
+        TArray<FRenderData> RenderDatas = MeshComponent->GetRenderDatas(*View.Camera);
+        // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
+        if (RenderDatas.empty()) continue;
 
         // 공통 Matrix 및 Color 계산 (루프 밖 1회 수행)
         const FMatrix MVP = World * View.ViewProj;
@@ -77,8 +79,17 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
         const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
 
+        FVector CameraToMesh = MeshComponent->GetGlobalTransform().Location - View.Camera->Position;
+        float Distance = CameraToMesh.Size();
+        Distance = Distance < View.Camera->Projection.FarZ ? Distance : View.Camera->Projection.FarZ;
+        Distance = Distance > View.Camera->Projection.NearZ ? Distance : View.Camera->Projection.NearZ;
+        float DistanceMax = View.Camera->Projection.FarZ - View.Camera->Projection.NearZ;
+        float DistanceMin = View.Camera->Projection.NearZ;
+        float NormalizedDistance = (Distance - DistanceMin) / (DistanceMax);
+        uint32 QuantizedDistance = static_cast<uint32>(0xffffff * NormalizedDistance);
+
         // 슬롯별 RenderData 순회 처리
-        for (FRenderData Data : RenderDatas)
+        for (FRenderData& Data : RenderDatas)
         {
             Data.bSelected = bSelected;
 
@@ -96,14 +107,20 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             Data.Constants.DisableShading = DisableShading;
 
             // 머티리얼의 블렌드 모드에 따라 불투명 및 반투명 패스 자동 분기
-            auto Material = ResLib.GetMaterial(Data.MaterialId);
+            // 메시/머티리얼은 여기서 한 번만 조회해 RenderData에 포인터로 보관
+            FMaterial* Material = ResLib.GetMaterial(Data.MaterialId).get();
+            Data.MeshPtr = ResLib.GetMesh(Data.MeshId).get();
+            Data.MaterialPtr = Material ? Material : ResLib.GetMaterial(FName("Simple")).get();
+
             if (Material && (Material->GetBlendMode() == EBlendMode::Additive || Material->GetBlendMode() == EBlendMode::Translucent))
             {
-                RenderQueue.PushTranslucent(Data);
+                uint64 SortKey = GetSortKey(Data.MaterialPtr, Data.MeshPtr, 0xffffff - QuantizedDistance);
+                RenderQueue.PushTranslucent(Data, SortKey);
             }
             else
             {
-                RenderQueue.PushOpaque(Data);
+                uint64 SortKey = GetSortKey(Data.MaterialPtr, Data.MeshPtr, QuantizedDistance);
+                RenderQueue.PushOpaque(Data, SortKey);
             }
         }
     }
@@ -116,6 +133,9 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 
     // 씬 컴포넌트 수집
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
+
+    // 정렬
+    RenderQueue.Sort();
 
     // 기본 씬 오브젝트 패스
     FlushBasePass(*View.Camera);
@@ -370,13 +390,16 @@ void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& Pip
 
 void FRenderView::DrawRenderData(const FRenderData& Data)
 {
-    auto& ResLib = FRenderResourceLibrary::Get();
-    auto Mesh = ResLib.GetMesh(Data.MeshId);
-    auto Material = ResLib.GetMaterial(Data.MaterialId);
+    FStaticMesh* Mesh = Data.MeshPtr;
+    FMaterial* Material = Data.MaterialPtr;
 
-    if (!Material)
+    // 수집 단계를 거치지 않은 데이터 대비 폴백 조회
+    if (!Mesh || !Material)
     {
-        Material = ResLib.GetMaterial(FName("Simple"));
+        auto& ResLib = FRenderResourceLibrary::Get();
+        if (!Mesh) Mesh = ResLib.GetMesh(Data.MeshId).get();
+        if (!Material) Material = ResLib.GetMaterial(Data.MaterialId).get();
+        if (!Material) Material = ResLib.GetMaterial(FName("Simple")).get();
     }
 
     if (!Mesh || !Material) return;
@@ -389,9 +412,9 @@ void FRenderView::DrawRenderData(const FRenderData& Data)
 void FRenderView::FlushQueue(const FCamera& Camera)
 {
     // 불투명 패스
-    for (const FRenderData& Data : RenderQueue.GetOpaqueRenderQ())
+    for (const auto& [SortKey, Index] : RenderQueue.GetOpaqueSortKeys())
     {
-        DrawRenderData(Data);
+        DrawRenderData(RenderQueue.GetOpaqueRenderQ()[Index]);
     }
 
     // 인스턴싱 패스
@@ -406,9 +429,9 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     }
 
     // 반투명 패스
-    for (const FRenderData& Data : RenderQueue.GetTranslucentRenderQ())
+    for (const auto& [SortKey, Index] : RenderQueue.GetTranslucentSortKeys())
     {
-        DrawRenderData(Data);
+        DrawRenderData(RenderQueue.GetTranslucentRenderQ()[Index]);
     }
 
     // 텍스트 패스
@@ -457,4 +480,37 @@ void FRenderView::RenderPreviewScene(
     
 }
 
+uint64 FRenderView::GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint32 Depth)
+{
+    if (!InMaterial || !InMesh || !InMaterial->GetPipeline())
+    {
+        return 0xffffff;
+    }
 
+    uint64 SortKey = 0u;
+    if (InMaterial->GetBlendMode() == EBlendMode::Opaque)
+    {
+        SortKey = 0u;
+
+        SortKey <<= 10;
+        SortKey |= (0x3ff & InMaterial->GetPipeline()->SortID);
+
+        SortKey <<= 12;
+        SortKey |= (0xfff & InMaterial->SortID);
+
+        SortKey <<= 16;
+        SortKey |= (0xffff & InMesh->SortID);
+
+        SortKey <<= 24;
+        SortKey |= (0xffffff & Depth);
+    }
+    else if (InMaterial->GetBlendMode() == EBlendMode::Translucent)
+    {
+        SortKey = 1u;
+
+        SortKey <<= 38 + 24;
+        SortKey |= (0xffffff & Depth);
+    }
+
+    return SortKey;
+}

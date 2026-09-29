@@ -142,13 +142,13 @@ void FEditorApplication::Tick(float DeltaTime) {
         }
     }
 #else
-    ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
+    //ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
     EditorViewportWindow.Process(Editor, DeltaTime);
-    WorldOutliner.Process(Editor);
+    //WorldOutliner.Process(Editor);
     ControlPanelWindow.Process(Editor);
-    PropertyWindow.Process(Editor);
+    //PropertyWindow.Process(Editor);
     ConsoleWindow.Process(Editor);
-    ContentsDrawer.Process(Editor);
+    //ContentsDrawer.Process(Editor);
     OverlayStat.Process(Editor, DeltaTime);
     STATS.Reset();
 
@@ -311,14 +311,14 @@ void FEditorApplication::Render() {
 
 
     // 스태틱 메시 프리뷰 렌더링
-    for (const auto& Window : PreviewWindows)
-    {
-        if (Window && Window->IsOpen())
-        {
-            RenderView->RenderPreviewScene(Window->GetRenderTarget(), Window->GetPreviewViewport().ViewportCamera,
-                Window->GetTargetMesh(), Window->GetPreviewMaterial(), Window->PreviewWidth, Window->PreviewHeight, Window->bShowGrid, Window->prevType);
-        }
-    }
+    //for (const auto& Window : PreviewWindows)
+    //{
+    //    if (Window && Window->IsOpen())
+    //    {
+    //        RenderView->RenderPreviewScene(Window->GetRenderTarget(), Window->GetPreviewViewport().ViewportCamera,
+    //            Window->GetTargetMesh(), Window->GetPreviewMaterial(), Window->PreviewWidth, Window->PreviewHeight, Window->bShowGrid, Window->prevType);
+    //    }
+    //}
 
     RenderView->GetRenderer().BindBackBufferWithDepth();
     ImguiManager.RenderUI();
