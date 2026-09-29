@@ -73,9 +73,15 @@ public:
 	[[nodiscard]] bool HasSpecularMap() const { return !DefaultSpecularTextureId.IsNone() && DefaultSpecularTextureId != FName("None"); }
 	[[nodiscard]] uint32 GetVertexBufferSize() { return VertexBufferSize; }
 	[[nodiscard]] uint32 GetIndexBufferSize() { return IndexBufferSize; }
+	[[nodiscard]] float* GetMeshLodErrors() { return MeshLodErrors; }
+	[[nodiscard]] uint32 GetMeshLodCount() { return MeshLodCount; }
+	void SetMeshLodCount(uint32 InCount) { MeshLodCount = InCount; }
+
 
 	// 버퍼 데이터 갱신
 	bool UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Context, const struct FMeshDesc& Desc);
+
+	void BuildMeshLodSummery();
 
 	// 공개 에셋 속성
 	FName MeshId{ "None" };
@@ -110,6 +116,9 @@ private:
 
 	D3D11_PRIMITIVE_TOPOLOGY Topology = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	FAxisAlignedBoundingBox LocalBounds{};
+
+	float MeshLodErrors[MAX_MESH_LOD] = {};
+	uint32 MeshLodCount = 1u;
 
 	mutable TSharedPtr<FStaticMeshBVH> BVH;
 };

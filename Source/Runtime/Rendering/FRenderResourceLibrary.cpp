@@ -1627,6 +1627,8 @@ bool FRenderResourceLibrary::CreateObjMeshes()
             CpuIndexCount = CpuIndexCount < Section.FirstIndex + Section.IndexCount ? Section.FirstIndex + Section.IndexCount : CpuIndexCount;
         }
 
+        // ObjDecoder에서 decode하면서 재정렬함
+
         // GPU 정점 캐시 재사용률을 높이도록 삼각형 순서를 재정렬한다(그려지는 결과는 같다).
         // 섹션마다 따로 드로우하므로 섹션 인덱스 구간 안에서만 섞어 경계를 유지한다.
         //if (!ModelData.Indices.empty())
@@ -1680,6 +1682,7 @@ bool FRenderResourceLibrary::CreateObjMeshes()
         StaticMesh->PathFileName = ObjFile.string();
         StaticMesh->MeshId = MeshKey;
         StaticMesh->Sections = std::move(ModelData.Sections);
+        StaticMesh->BuildMeshLodSummery();
 
         // 첫 피킹 때 빌드 지연이 생기지 않도록 로드 시점에 BVH를 미리 빌드한다.
         (void)StaticMesh->GetBVH();
