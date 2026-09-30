@@ -37,8 +37,11 @@ class FEditorApplication final {
 
 	FRenderView* RenderView = nullptr;
 
-	// 테스트용 토글: F1 로 ImGui 패널과 그리드를 함께 켜고 끈다 (기본은 끔)
+	// 테스트용 토글: F1 로 ImGui 패널을 켜고 끈다 (기본은 끔)
 	bool bShowEditorUI = false;
+
+	// 테스트용 토글: F3 으로 그리드를 켜고 끈다 (기본은 끔)
+	bool bShowGrid = false;
 
 public:
 	

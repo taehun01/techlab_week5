@@ -152,10 +152,16 @@ void FEditorApplication::Tick(float DeltaTime) {
         ZoneScopedN("UI Windows");
         FInputManager& Input = FInputManager::Get();
 
-        // F1: ImGui 패널 + 그리드 토글 (기본은 창 전체 렌더링 모드)
+        // F1: ImGui 패널 토글 (기본은 창 전체 렌더링 모드)
         if (Input.IsKeyJustPressed(VK_F1))
         {
             bShowEditorUI = !bShowEditorUI;
+        }
+
+        // F3: 그리드 토글 (기본은 끔)
+        if (Input.IsKeyJustPressed(VK_F3))
+        {
+            bShowGrid = !bShowGrid;
         }
 
         // F2: 프러스텀 컬링 토글 (기본은 켬)
@@ -335,7 +341,7 @@ void FEditorApplication::Render() {
 
         FGizmo* Gizmo = Editor.ObjectSelected() ? &Editor.GetGizmo() : nullptr;
         UTextInstanceComponent* Text = Editor.ObjectSelected() ? Editor.GetTextcomp() : nullptr;
-        FGrid* Grid = bShowEditorUI ? &Editor.GetGrid() : nullptr;
+        FGrid* Grid = bShowGrid ? &Editor.GetGrid() : nullptr;
         EditorViewport.UpdateViewAndCtx(Editor.GlobalLight, Editor.GetSelectedActor(), Editor.SelectedTransform, Gizmo, Text, Grid, &VisualizerRegistry);
 
         // 뷰포트 렌더링 명세 구성
