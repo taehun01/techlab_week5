@@ -646,7 +646,8 @@ void FRenderView::RenderPreviewScene(
 uint64 FRenderView::GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint32 Depth)
 {
     // InMaterial·InMesh는 수집 단계에서 항상 유효하다 (메시가 없는 항목은 큐에 넣지 않는다)
-    if (!InMaterial->GetPipeline())
+    const FRenderPipeline* Pipeline = InMaterial->GetPipeline().get();
+    if (!Pipeline)
     {
         return 0xffffff;
     }
@@ -657,7 +658,7 @@ uint64 FRenderView::GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint3
         SortKey = 0u;
 
         SortKey <<= 10;
-        SortKey |= (0x3ff & InMaterial->GetPipeline()->SortID);
+        SortKey |= (0x3ff & Pipeline->SortID);
 
         SortKey <<= 12;
         SortKey |= (0xfff & InMaterial->SortID);

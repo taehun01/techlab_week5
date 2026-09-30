@@ -34,7 +34,8 @@ public:
 
   TSharedPtr<FMaterial> Clone() const;
 
-  [[nodiscard]] TSharedPtr<FRenderPipeline> GetPipeline() const { return Pipeline; }
+  // 참조로 반환: 값 반환은 호출마다 참조 카운트 원자 증감이 생긴다 (GetSortKey에서 항목마다 호출됨)
+  [[nodiscard]] const TSharedPtr<FRenderPipeline>& GetPipeline() const { return Pipeline; }
 
   // 슬롯별 텍스처 설정
   void SetTexture(EMaterialTextureSlot Slot, const TSharedPtr<FTexture>& InTexture);
