@@ -797,7 +797,11 @@ uint8 FRenderView::SelectLod(const FStaticMesh* StaticMesh, float Scale, float D
         return 0u;
     }
 
-    // ForceLod 분기는 제거했다: 유일한 호출부(CollectScenePrimitives)가 기본값(-1)만 넘긴다
+    //if (Setting.ForceLod != -1)
+    //{
+    //    return Setting.ForceLod;
+    //}
+
     uint8 SelectedLod = 0u;
     for (int32 CurrentLod = static_cast<int32>(MeshLodCount) - 1; CurrentLod >= 0; --CurrentLod)
     {
