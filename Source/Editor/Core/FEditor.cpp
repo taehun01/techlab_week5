@@ -130,8 +130,22 @@ void FEditor::LoadScene(const FString &Path)
 {
 
   // 씬 로드
-  SceneManager->LoadScene(Path);
+  const std::optional<FSceneCameraInfo> SavedCamera = SceneManager->LoadScene(Path);
   SelectedActor = nullptr;
+
+  // 씬 파일에 카메라가 있으면 메인 원근 뷰포트 카메라에 적용
+  if (SavedCamera && !EditorViewports.empty())
+  {
+    constexpr float RadToDeg = 180.0f / std::numbers::pi_v<float>;
+    FCamera &Camera = EditorViewports[0].ViewportCamera;
+    Camera.Position = SavedCamera->Location;
+    // 파일의 Pitch는 양수가 아래를 보는 방향, 에디터 카메라는 음수가 아래를 보는 방향
+    Camera.Pitch = -SavedCamera->RotationRad.Y * RadToDeg;
+    Camera.Yaw = SavedCamera->RotationRad.Z * RadToDeg;
+    Camera.Projection.FOV = SavedCamera->FOV;
+    Camera.Projection.NearZ = SavedCamera->NearClip;
+    Camera.Projection.FarZ = SavedCamera->FarClip;
+  }
 }
 
 bool FEditor::CheckSceneExists() {
