@@ -84,34 +84,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
   SceneManager.SetScene(NewObject<UScene>());
 
-  //// 사과 50만개 테스트용 코드
-  //UStaticMesh* RedAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("apple_mid");
-  //UStaticMesh* YellowAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("apple_mid");
-
-  //const float Spacing = 1.f;
-
-  //for (uint32 i = 0; i < 50; ++i)
-  //{
-  //    for (uint32 j = 0; j < 50; ++j)
-  //    {
-  //        for (uint32 k = 0; k < 20; ++k)
-  //        {
-  //            FVector Location(i* Spacing, j* Spacing, k* Spacing);
-  //            FVector Scale(1.f, 1.f, 1.f);
-  //            AStaticMeshActor* NewApple = SceneManager.CurrentScene->SpawnActor<AStaticMeshActor>(Location, Scale);
-  //            if (i % 2 == 0)
-  //            {
-  //                NewApple->SetStaticMesh(RedAppleMesh);
-  //            }
-  //            else
-  //            {
-  //                NewApple->SetStaticMesh(YellowAppleMesh);
-  //            }
-  //            
-  //        }
-  //    }
-  //}
-
   FEditorApplication &EditorApp = FEditorApplication::Get();
   {
     ID3D11Device *Device = nullptr;
