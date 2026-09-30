@@ -79,6 +79,9 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
     // 1) 후보: 프러스텀 컬링 없이 씬의 모든 렌더 컴포넌트를 그린다 (화면 밖은 GPU 클리핑에 맡김).
     //    실험: 전부 보이는 씬에서는 컬링 비용(옥트리 질의 + 오브젝트별 AABB/프러스텀 검사)이 순수 손해라서 뺐다.
+
+    const FFrustum& Frustum = Camera.CreateFrustum();
+
     const TArray<UMeshComponent*>& Candidates = Scene.GetRenderComponents();
 
     FLodFrameParams LodFrameParams = MakeLodFrameParams(Renderer.GetViewportHeight(), Camera);
@@ -108,6 +111,12 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
                 // UScene::AddRenderComponent가 nullptr를 거르므로 후보는 항상 유효하다
                 UMeshComponent* MeshComponent = Candidates[i];
+
+                const FAxisAlignedBoundingBox WorldBounds = { MeshComponent->GetLocalBounds(), MeshComponent->GetRenderMatrix(Camera)};
+                if (!Frustum.Intersects(WorldBounds))
+                {
+                    continue;
+                }
 
                 // 쇼 플래그 확인
                 if ((ShowFlags & static_cast<uint64>(MeshComponent->GetShowFlag())) == 0) continue;
