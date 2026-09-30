@@ -158,6 +158,12 @@ void FEditorApplication::Tick(float DeltaTime) {
             bShowEditorUI = !bShowEditorUI;
         }
 
+        // F2: 프러스텀 컬링 토글 (기본은 켬)
+        if (Input.IsKeyJustPressed(VK_F2) && RenderView)
+        {
+            RenderView->SetFrustumCullingEnabled(!RenderView->IsFrustumCullingEnabled());
+        }
+
         if (bShowEditorUI)
         {
             ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);

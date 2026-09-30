@@ -77,10 +77,11 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     // MVP는 만들지 않는다: 셰이더가 World와 b1의 ViewProj(RenderView에서 설정)로 계산한다.
     // 그래서 오브젝트 상수는 카메라와 무관하다.
 
-    // 1) 후보: 프러스텀 컬링 없이 씬의 모든 렌더 컴포넌트를 그린다 (화면 밖은 GPU 클리핑에 맡김).
-    //    실험: 전부 보이는 씬에서는 컬링 비용(옥트리 질의 + 오브젝트별 AABB/프러스텀 검사)이 순수 손해라서 뺐다.
+    // 1) 후보: 씬의 모든 렌더 컴포넌트. bFrustumCulling이 켜져 있으면 오브젝트별 AABB/프러스텀 검사로 거른다.
+    //    끄면 화면 밖도 전부 그린다 (GPU 클리핑에 맡김). 전부 보이는 씬에서는 컬링 비용이 순수 손해일 수 있다.
 
     const FFrustum& Frustum = Camera.CreateFrustum();
+    const bool bCullFrustum = bFrustumCulling;
 
     const TArray<UMeshComponent*>& Candidates = Scene.GetRenderComponents();
 
@@ -112,10 +113,13 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
                 // UScene::AddRenderComponent가 nullptr를 거르므로 후보는 항상 유효하다
                 UMeshComponent* MeshComponent = Candidates[i];
 
-                const FAxisAlignedBoundingBox WorldBounds = { MeshComponent->GetLocalBounds(), MeshComponent->GetRenderMatrix(Camera)};
-                if (!Frustum.Intersects(WorldBounds))
+                if (bCullFrustum)
                 {
-                    continue;
+                    const FAxisAlignedBoundingBox WorldBounds = { MeshComponent->GetLocalBounds(), MeshComponent->GetRenderMatrix(Camera)};
+                    if (!Frustum.Intersects(WorldBounds))
+                    {
+                        continue;
+                    }
                 }
 
                 // 쇼 플래그 확인

@@ -25,53 +25,43 @@ namespace
 	}
 
 	// 순회 중 반복 사용하는 광선 정보를 미리 계산해 둔다.
+	// 나눗셈과 방향 부호 판단을 순회 밖으로 빼서, 박스 검사에서는 분기 없이 곱셈과 min/max만 쓴다.
 	struct FRayCache
 	{
-		FVector Origin;
-		FVector InvDirection;
-		bool bParallel[3] = {};
+		float Origin[3];
+		float InvDirection[3];
+		int32 Neg[3]; // 방향이 음수인 축이면 1 (광선이 먼저 만나는 면이 Max)
 
 		explicit FRayCache(const FRay& Ray)
-			: Origin(Ray.Origin)
 		{
-			constexpr float Epsilon = 0.000001f;
 			for (int32 I = 0; I < 3; ++I)
 			{
-				bParallel[I] = std::abs(Ray.Direction[I]) < Epsilon;
-				InvDirection[I] = bParallel[I] ? 0.0f : 1.0f / Ray.Direction[I];
+				const float D = Ray.Direction[I];
+				Origin[I] = Ray.Origin[I];
+				// 0 방향이면 매우 큰 값으로 대체한다. 1/0 = inf는 0 * inf = NaN을 만들 수 있다.
+				// 축과 평행한 광선은 시작점이 슬랩 밖이면 (거리 * 1e30)이 범위를 벗어나 자연스럽게 탈락한다.
+				InvDirection[I] = (std::abs(D) > 1e-20f) ? 1.0f / D : std::copysign(1e30f, D);
+				Neg[I] = InvDirection[I] < 0.0f ? 1 : 0;
 			}
 		}
 	};
 
+	// 광선이 박스에 들어가는 거리. 원점이 박스 안이면 0. MaxT보다 멀거나 빗나가면 false.
 	bool IntersectRayBounds(const FRayCache& Ray, const FAxisAlignedBoundingBox& Box, float MaxT, float& OutTNear)
 	{
-		float TNear = 0.0f;
-		float TFar = MaxT;
+		const FVector* B[2] = { &Box.Min, &Box.Max };
+		const float TxMin = ((*B[Ray.Neg[0]]).X - Ray.Origin[0]) * Ray.InvDirection[0];
+		const float TxMax = ((*B[1 - Ray.Neg[0]]).X - Ray.Origin[0]) * Ray.InvDirection[0];
+		const float TyMin = ((*B[Ray.Neg[1]]).Y - Ray.Origin[1]) * Ray.InvDirection[1];
+		const float TyMax = ((*B[1 - Ray.Neg[1]]).Y - Ray.Origin[1]) * Ray.InvDirection[1];
+		const float TzMin = ((*B[Ray.Neg[2]]).Z - Ray.Origin[2]) * Ray.InvDirection[2];
+		const float TzMax = ((*B[1 - Ray.Neg[2]]).Z - Ray.Origin[2]) * Ray.InvDirection[2];
 
-		for (int32 I = 0; I < 3; ++I)
+		const float TNear = (std::max)((std::max)(TxMin, TyMin), (std::max)(TzMin, 0.0f));
+		const float TFar = (std::min)((std::min)(TxMax, TyMax), (std::min)(TzMax, MaxT));
+		if (TNear > TFar)
 		{
-			if (Ray.bParallel[I])
-			{
-				if (Ray.Origin[I] < Box.Min[I] || Ray.Origin[I] > Box.Max[I])
-				{
-					return false;
-				}
-				continue;
-			}
-
-			float T0 = (Box.Min[I] - Ray.Origin[I]) * Ray.InvDirection[I];
-			float T1 = (Box.Max[I] - Ray.Origin[I]) * Ray.InvDirection[I];
-			if (T0 > T1)
-			{
-				std::swap(T0, T1);
-			}
-
-			TNear = (std::max)(TNear, T0);
-			TFar = (std::min)(TFar, T1);
-			if (TNear > TFar)
-			{
-				return false;
-			}
+			return false;
 		}
 
 		OutTNear = TNear;

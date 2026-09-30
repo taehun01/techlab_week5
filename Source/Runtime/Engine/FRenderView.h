@@ -41,6 +41,9 @@ class FRenderView final {
 	// 컴포넌트별 계산 결과. 매 프레임 크기만 맞추고 용량은 유지한다.
 	TArray<FPrimitiveCullResult> CullResults;
 
+	// 프러스텀 컬링 on/off (끄면 화면 밖 오브젝트도 전부 GPU 클리핑에 맡긴다)
+	bool bFrustumCulling = true;
+
 	// 큐 항목 하나를 드로우 (상수 버퍼 오프셋을 못 쓰는 경우와 반투명 패스용)
 	void DrawItem(const FDrawItem& Item);
 
@@ -50,6 +53,9 @@ public:
 	const FRenderer& GetRenderer() const { return Renderer; }
 	FRenderView(const FRenderView&) = delete;
 	FRenderView& operator=(const FRenderView&) = delete;
+
+	bool IsFrustumCullingEnabled() const { return bFrustumCulling; }
+	void SetFrustumCullingEnabled(bool bEnabled) { bFrustumCulling = bEnabled; }
 
 	// 전체 뷰포트 렌더링
 	void RenderView(const FSceneView& View, const UScene& Scene, const FEditorRenderContext& EditorCtx);
