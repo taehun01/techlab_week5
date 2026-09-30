@@ -93,7 +93,9 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
                 Result.World = MeshComponent->GetRenderMatrix(Camera);
 
                 // 정렬 키용 카메라 거리 (Near~Far를 24비트로 양자화)
-                const FVector CameraToMesh = MeshComponent->GetGlobalTransform().Location - Camera.Position;
+                // 월드 위치는 렌더 행렬의 4행에 이미 있다 (기본·빌보드·텍스트 모두 4행 = GetGlobalTransform().Location)
+                const FVector WorldLocation{ Result.World.M[3][0], Result.World.M[3][1], Result.World.M[3][2] };
+                const FVector CameraToMesh = WorldLocation - Camera.Position;
                 float Distance = CameraToMesh.Size();
                 float ClipDistance = Distance < FarZ ? Distance : FarZ;
                 ClipDistance = ClipDistance > NearZ ? ClipDistance : NearZ;
