@@ -281,14 +281,13 @@ void FMeshBVH::Subdivide(int32 NodeIndex, int32 Depth)
 		return;
 	}
 
-	// 삼각형 중심점이 가장 넓게 퍼진 축을 분할 축으로 고른다.
 	FAxisAlignedBoundingBox CentroidBounds;
 	for (int32 I = First; I < First + Count; ++I)
 	{
-		const FTriangle& Triangle = Triangles[I];
-		Expand(CentroidBounds, (Triangle.A + Triangle.B + Triangle.C) * (1.0f / 3.0f));
+		Expand(CentroidBounds, Centroid(Triangles[I]));
 	}
 
+	// 삼각형 중심점이 가장 넓게 퍼진 축 (Median split과 SAH 실패 시 대체용)
 	const FVector Extent = CentroidBounds.Max - CentroidBounds.Min;
 	int32 Axis = 0;
 	if (Extent.Y > Extent[Axis]) Axis = 1;
@@ -300,9 +299,12 @@ void FMeshBVH::Subdivide(int32 NodeIndex, int32 Depth)
 		return;
 	}
 
-	const int32 Mid = Settings.bUseSAH
-		? SplitSAH(First, Count, Axis)
-		: SplitMedian(First, Count, Axis);
+	int32 Mid = Settings.bUseSAH ? SplitSAH(First, Count, CentroidBounds) : -1;
+	// SAH가 분할점을 못 찾았거나 한쪽으로 쏠리면 Median으로 자른다.
+	if (Mid <= First || Mid >= First + Count)
+	{
+		Mid = SplitMedian(First, Count, Axis);
+	}
 
 	const int32 LeftIndex = static_cast<int32>(Nodes.size());
 
@@ -342,44 +344,99 @@ int32 FMeshBVH::SplitMedian(int32 First, int32 Count, int32 Axis)
 	return Mid;
 }
 
-int32 FMeshBVH::SplitSAH(int32 First, int32 Count, int32 Axis)
+int32 FMeshBVH::SplitSAH(int32 First, int32 Count, const FAxisAlignedBoundingBox& CentroidBounds)
 {
-	// SAH: 왼쪽 AABB 표면적 * 개수 + 오른쪽 AABB 표면적 * 개수가 가장 작은 분할점을 고른다.
-	// 
-	// 고른 Axis 기준으로 중심점 순 정렬
-	std::sort(Triangles.begin() + First, Triangles.begin() + First + Count,
-		[Axis](const FTriangle& L, const FTriangle& R)
-		{
-			return (L.A[Axis] + L.B[Axis] + L.C[Axis]) < (R.A[Axis] + R.B[Axis] + R.C[Axis]);
-		});
+	// Binned SAH: 중심점을 축마다 NumBins개 구간에 나눠 담고, 구간 경계에서만 비용을 계산한다.
+	// 비용 = 왼쪽 AABB 표면적 * 개수 + 오른쪽 AABB 표면적 * 개수. 세 축 중 가장 작은 곳을 고른다.
+	// 정렬 없이 O(N)이라 삼각형 수가 많아도 빌드가 빠르고, 트리 품질은 전체 정렬 SAH와 거의 같다.
+	constexpr int32 NumBins = 16;
 
-	// 오른쪽에서 왼쪽으로 스윕: RightArea[I] = [First + I, End) 박스 표면적
-	TArray<float> RightArea(Count);
-	FAxisAlignedBoundingBox RightBox;
-	for (int32 I = Count - 1; I > 0; --I)
+	struct FBin
 	{
-		const FTriangle& T = Triangles[First + I];
-		Expand(RightBox, T.A); Expand(RightBox, T.B); Expand(RightBox, T.C);
-		RightArea[I] = SurfaceArea(RightBox);
-	}
+		FAxisAlignedBoundingBox Bounds;
+		int32 Count = 0;
+	};
 
-	// 왼쪽에서 오른쪽으로 스윕하면서 비용 비교
-	float BestCost = std::numeric_limits<float>::max();
-	int32 BestSplit = First + Count / 2;
-	FAxisAlignedBoundingBox LeftBox;
-	for (int32 I = 1; I < Count; ++I) // I = 왼쪽 개수, 양쪽 최소 1개
+	float BestCost = (std::numeric_limits<float>::max)();
+	int32 BestAxis = -1;
+	int32 BestSplit = -1; // 이 구간까지가 왼쪽
+
+	for (int32 Axis = 0; Axis < 3; ++Axis)
 	{
-		const FTriangle& T = Triangles[First + I - 1];
-		Expand(LeftBox, T.A); Expand(LeftBox, T.B); Expand(LeftBox, T.C);
-
-		const float Cost = SurfaceArea(LeftBox) * I + RightArea[I] * (Count - I);
-		if (Cost < BestCost)
+		const float Lo = CentroidBounds.Min[Axis];
+		const float Hi = CentroidBounds.Max[Axis];
+		if (Hi - Lo <= 0.0f)
 		{
-			BestCost = Cost;
-			BestSplit = First + I;
+			continue;
+		}
+
+		FBin Bins[NumBins];
+		const float Scale = NumBins / (Hi - Lo);
+		for (int32 I = First; I < First + Count; ++I)
+		{
+			const FTriangle& T = Triangles[I];
+			const int32 BinIndex = (std::min)(NumBins - 1, static_cast<int32>((Centroid(T)[Axis] - Lo) * Scale));
+			FBin& Bin = Bins[BinIndex];
+			++Bin.Count;
+			Expand(Bin.Bounds, T.A); Expand(Bin.Bounds, T.B); Expand(Bin.Bounds, T.C);
+		}
+
+		// 오른쪽에서 왼쪽으로 누적: Right*[I] = 구간 (I, NumBins) 합계
+		float RightArea[NumBins - 1];
+		int32 RightCount[NumBins - 1];
+		FAxisAlignedBoundingBox RightBox;
+		int32 RightSum = 0;
+		for (int32 I = NumBins - 1; I > 0; --I)
+		{
+			RightSum += Bins[I].Count;
+			if (Bins[I].Count > 0)
+			{
+				Expand(RightBox, Bins[I].Bounds.Min); Expand(RightBox, Bins[I].Bounds.Max);
+			}
+			RightCount[I - 1] = RightSum;
+			RightArea[I - 1] = RightSum > 0 ? SurfaceArea(RightBox) : 0.0f;
+		}
+
+		// 왼쪽에서 오른쪽으로 누적하면서 비용 비교
+		FAxisAlignedBoundingBox LeftBox;
+		int32 LeftSum = 0;
+		for (int32 I = 0; I < NumBins - 1; ++I)
+		{
+			LeftSum += Bins[I].Count;
+			if (Bins[I].Count > 0)
+			{
+				Expand(LeftBox, Bins[I].Bounds.Min); Expand(LeftBox, Bins[I].Bounds.Max);
+			}
+			if (LeftSum == 0 || RightCount[I] == 0)
+			{
+				continue;
+			}
+
+			const float Cost = SurfaceArea(LeftBox) * LeftSum + RightArea[I] * RightCount[I];
+			if (Cost < BestCost)
+			{
+				BestCost = Cost;
+				BestAxis = Axis;
+				BestSplit = I;
+			}
 		}
 	}
-	return BestSplit;
+
+	if (BestAxis < 0)
+	{
+		return -1;
+	}
+
+	// 고른 축/구간 기준으로 삼각형을 왼쪽, 오른쪽으로 재배치
+	const float Lo = CentroidBounds.Min[BestAxis];
+	const float Scale = NumBins / (CentroidBounds.Max[BestAxis] - Lo);
+	const auto It = std::partition(Triangles.begin() + First, Triangles.begin() + First + Count,
+		[&](const FTriangle& T)
+		{
+			const int32 BinIndex = (std::min)(NumBins - 1, static_cast<int32>((Centroid(T)[BestAxis] - Lo) * Scale));
+			return BinIndex <= BestSplit;
+		});
+	return static_cast<int32>(It - Triangles.begin());
 }
 
 //삼각형 A, B, C를 전부 Expand해서 범위 전체를 감싸는 박스를 만듭니다.
