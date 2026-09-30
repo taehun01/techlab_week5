@@ -150,16 +150,28 @@ void FEditorApplication::Tick(float DeltaTime) {
 #else
     {
         ZoneScopedN("UI Windows");
-        // 창 전체 렌더링 모드: 패널은 띄우지 않고 뷰포트 입력과 스탯 오버레이만 처리
-        //ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
+        FInputManager& Input = FInputManager::Get();
+
+        // F1: ImGui 패널 + 그리드 토글 (기본은 창 전체 렌더링 모드)
+        if (Input.IsKeyJustPressed(VK_F1))
+        {
+            bShowEditorUI = !bShowEditorUI;
+        }
+
+        if (bShowEditorUI)
+        {
+            ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
+        }
         EditorViewportWindow.Process(Editor, DeltaTime);
         //WorldOutliner.Process(Editor);
-        //ControlPanelWindow.Process(Editor);
-        //PropertyWindow.Process(Editor);
-        //ConsoleWindow.Process(Editor);
+        if (bShowEditorUI)
+        {
+            ControlPanelWindow.Process(Editor);
+            //PropertyWindow.Process(Editor);
+            ConsoleWindow.Process(Editor);
+        }
 
-        // 툴바를 띄우지 않으므로 Ctrl + O 로 씬 불러오기
-        FInputManager& Input = FInputManager::Get();
+        // 툴바를 띄우지 않을 때도 Ctrl + O 로 씬 불러오기
         if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyJustPressed('O'))
         {
             FString Path;
@@ -317,7 +329,8 @@ void FEditorApplication::Render() {
 
         FGizmo* Gizmo = Editor.ObjectSelected() ? &Editor.GetGizmo() : nullptr;
         UTextInstanceComponent* Text = Editor.ObjectSelected() ? Editor.GetTextcomp() : nullptr;
-        EditorViewport.UpdateViewAndCtx(Editor.GlobalLight, Editor.GetSelectedActor(), Editor.SelectedTransform, Gizmo, Text, Editor.GetGrid(), &VisualizerRegistry);
+        FGrid* Grid = bShowEditorUI ? &Editor.GetGrid() : nullptr;
+        EditorViewport.UpdateViewAndCtx(Editor.GlobalLight, Editor.GetSelectedActor(), Editor.SelectedTransform, Gizmo, Text, Grid, &VisualizerRegistry);
 
         // 뷰포트 렌더링 명세 구성
         if (EditorViewport.editorCtx.SelectedActor) {

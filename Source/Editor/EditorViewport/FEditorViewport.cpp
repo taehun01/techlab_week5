@@ -6,7 +6,7 @@
 
 
 void FEditorViewport::UpdateViewAndCtx(FLightConstants GlobalLight, AActor* SelectedActor, FTransform Transform, 
-    FGizmo* Gizmo, UTextInstanceComponent* Textcomp, FGrid& Grid, FVisualizerRegistry* Visual)
+    FGizmo* Gizmo, UTextInstanceComponent* Textcomp, FGrid* Grid, FVisualizerRegistry* Visual)
 {
 
     sceneView.Camera = &ViewportCamera;
@@ -23,9 +23,8 @@ void FEditorViewport::UpdateViewAndCtx(FLightConstants GlobalLight, AActor* Sele
     editorCtx.SelectedTransform = Transform;
     editorCtx.Gizmo = Gizmo;
     editorCtx.TextComp = Textcomp;
-    // 그리드 끔: Grid가 nullptr이면 FRenderView가 그리드를 그리지 않는다
-    //editorCtx.Grid = &Grid;
-    editorCtx.Grid = nullptr;
+    // Grid가 nullptr이면 FRenderView가 그리드를 그리지 않는다
+    editorCtx.Grid = Grid;
     editorCtx.VisualizerRegistry = Visual;
 
 
