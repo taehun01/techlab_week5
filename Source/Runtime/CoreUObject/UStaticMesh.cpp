@@ -23,6 +23,7 @@ void UStaticMesh::InitializeFromAsset(const FString& InMaterialId)
 {
     Materials.clear();
     Materials.push_back(InMaterialId);
+    FRenderResourceLibrary::InvalidateMaterialBindings();
 }
 
 FName UStaticMesh::DetermineMaterialId(const FName& FallbackMaterialId, const FName& Diffuse, const FName& Normal, const FName& Specular)
@@ -91,6 +92,7 @@ void UStaticMesh::SetStaticMeshAsset(TSharedPtr<FStaticMesh> InStaticMesh)
     {
         LocalBounds = FAxisAlignedBoundingBox{};
         Materials.clear();
+        FRenderResourceLibrary::InvalidateMaterialBindings();
     }
 }
 

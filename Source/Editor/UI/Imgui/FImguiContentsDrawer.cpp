@@ -410,6 +410,7 @@ void FImguiContentsDrawer::RenderContentView()
 			{
 				UStaticMesh* Mesh = FRenderResourceLibrary::Get().GetUStaticMesh("Sphere_Mat");
 				Mesh->Materials[0] = Item.DisplayName;
+				FRenderResourceLibrary::InvalidateMaterialBindings();
 
 				FEditorApplication::Get().OpenPreviewWindow(Mesh, EPrevType::Material);
 			}

@@ -139,6 +139,12 @@ public:
         return nullptr;
     }
 
+    // 머티리얼 바인딩 에포크. 머티리얼 등록·해제나 메시 슬롯 이름 변경처럼
+    // "머티리얼 이름 → FMaterial*" 결과가 바뀔 수 있는 일이 생기면 올린다.
+    // 컴포넌트는 슬롯별 FMaterial*를 캐싱해 두고 에포크가 바뀌었을 때만 다시 찾는다.
+    [[nodiscard]] static uint32 GetMaterialBindingEpoch() { return MaterialBindingEpoch; }
+    static void InvalidateMaterialBindings() { ++MaterialBindingEpoch; }
+
     // 머티리얼 조회TSharedPtr
     [[nodiscard]] TSharedPtr<FMaterial> GetMaterial(const FName& Id) const {
         auto it = AllMaterialMap.find(Id.ToString());
@@ -291,6 +297,7 @@ public:
     {
         AllMaterialMap.clear();
         AllMaterialFileSet.clear();
+        InvalidateMaterialBindings();
     }
 
     // 파이프라인 전체 해제
@@ -339,6 +346,9 @@ public:
   // 모든 obj 만드는 용도
   bool CreateObjMeshes();
 private:
+    // 1부터 시작해 캐시 초기값(0)과 겹치지 않게 한다
+    static inline uint32 MaterialBindingEpoch = 1u;
+
     bool InitializePipelines();
     bool CreateSolidWireframePipeline();
     bool CreateOutlinePipeline();

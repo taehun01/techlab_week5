@@ -49,6 +49,12 @@ protected:
     // FillMaterial과 같은 규칙으로 머티리얼 포인터를 바로 찾는다. 못 찾으면 nullptr.
     FMaterial* ResolveMaterial(int32 Slot) const;
 
+    // 슬롯별 ResolveMaterial 결과 캐시. 머티리얼 바인딩 에포크가 같고 슬롯 수가 같으면 그대로 쓴다.
+    // 이 컴포넌트의 오버라이드·메시가 바뀌면 MaterialCacheEpoch를 0으로 돌려 무효화한다.
+    mutable TArray<FMaterial*> CachedSlotMaterials;
+    mutable uint32 MaterialCacheEpoch = 0u;
+    void InvalidateMaterialCache() { MaterialCacheEpoch = 0u; }
+
     UStaticMesh* StaticMesh = nullptr;
     TArray<FName> OverrideMaterials;
 

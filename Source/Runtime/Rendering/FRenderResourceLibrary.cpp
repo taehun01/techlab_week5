@@ -630,6 +630,7 @@ UStaticMesh* FRenderResourceLibrary::CreateAndRegisterUStaticMesh(FName Key, TAr
     }
 
     MeshPtr->Materials = std::move(materials);
+    InvalidateMaterialBindings();
 
     MeshPtr->MeshId = Key;
     MeshPtr->SetStaticMeshAsset(fstaticmesh);
@@ -683,6 +684,8 @@ bool FRenderResourceLibrary::CreateUStaticMeshMap() {
 
         AllUStaticMeshMap[Key] = StaticMeshObj;
     }
+    // 위에서 메시 슬롯(Materials)을 직접 채웠다
+    InvalidateMaterialBindings();
 
 
     auto SphereAsset = GetSphereMesh();
@@ -1448,6 +1451,7 @@ FRenderResourceLibrary::RegisterMaterial(const FString& Id, TSharedPtr<FMaterial
     }
     inMaterial->SortID = static_cast<uint16>(AllMaterialMap.size());
     AllMaterialMap[Id] = inMaterial;
+    InvalidateMaterialBindings();
     return inMaterial;
 }
 
@@ -1802,6 +1806,7 @@ bool FRenderResourceLibrary::CreateFonts() {
 void FRenderResourceLibrary::UnregisterMaterial(const FString& InKey)
 {
     AllMaterialMap.erase(InKey);
+    InvalidateMaterialBindings();
 }
 
 bool FRenderResourceLibrary::CreateMeshThumbnails() {

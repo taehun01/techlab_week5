@@ -413,6 +413,7 @@ void FImguiPreviewEditorWindow::SaveAsset()
 
 			// 복사본 데이터를 원본에 덮어쓰기
 			OriginalMesh->Materials = TargetMesh->Materials;
+			FRenderResourceLibrary::InvalidateMaterialBindings();
 
 			// 메시 썸네일 최종 갱신
 			FRenderResourceLibrary::Get().UpdateMeshThumbnail(MeshKey);
@@ -543,6 +544,7 @@ void FImguiPreviewEditorWindow::DrawMeshDetailsPanel()
 				if (DragData && DragData->Kind == FContentDragPayload::EKind::Material)
 				{
 					CurrentSlotMat = DragData->Key;
+					FRenderResourceLibrary::InvalidateMaterialBindings();
 					bIsDirty = true;
 				}
 			}
@@ -576,6 +578,7 @@ void FImguiPreviewEditorWindow::DrawMeshDetailsPanel()
 				if (ImGui::Selectable(MatName.c_str(), bMatSelected))
 				{
 					CurrentSlotMat = MatName;
+					FRenderResourceLibrary::InvalidateMaterialBindings();
 					bIsDirty = true;
 				}
 

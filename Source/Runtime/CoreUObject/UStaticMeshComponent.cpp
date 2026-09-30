@@ -20,6 +20,7 @@ void UStaticMeshComponent::Initialize()
 bool UStaticMeshComponent::SetStaticMesh(UStaticMesh* InStaticMesh)
 {
     StaticMesh = InStaticMesh;
+    InvalidateMaterialCache();
     if (StaticMesh)
     {
         UpdateLocalBounds();
@@ -150,18 +151,31 @@ bool UStaticMeshComponent::AppendDrawItems(uint32 LodLevel, TArray<FDrawItem>& O
     FStaticMesh* const MeshAsset = StaticMesh->StaticMeshAsset.get();
     const auto& Sections = MeshAsset->Sections;
 
+    // 슬롯별 머티리얼 포인터: 바인딩 에포크와 슬롯 수가 그대로면 캐시를 쓴다.
+    // (매 프레임 하던 이름 맵 조회·weak_ptr lock·슬롯 이름 문자열 비교를 생략)
+    const size_t SlotCount = Sections.empty() ? 1u : std::min(StaticMesh->Materials.size(), Sections.size());
+    const uint32 Epoch = FRenderResourceLibrary::GetMaterialBindingEpoch();
+    if (MaterialCacheEpoch != Epoch || CachedSlotMaterials.size() != SlotCount)
+    {
+        CachedSlotMaterials.resize(SlotCount);
+        for (size_t i = 0; i < SlotCount; ++i)
+        {
+            CachedSlotMaterials[i] = ResolveMaterial(static_cast<int32>(i));
+        }
+        MaterialCacheEpoch = Epoch;
+    }
+
     if (Sections.empty())
     {
-        OutItems.push_back({ MeshAsset, ResolveMaterial(0), 0, -1, 0u });
+        OutItems.push_back({ MeshAsset, CachedSlotMaterials[0], 0, -1, 0u });
         return true;
     }
 
     // LodLevel은 SelectLod 결과(항상 LOD 개수 미만)이거나 0이라 범위를 다시 자르지 않는다
-    const size_t Count = std::min(StaticMesh->Materials.size(), Sections.size());
-    for (size_t i = 0; i < Count; ++i)
+    for (size_t i = 0; i < SlotCount; ++i)
     {
         const auto& Lod = Sections[i].Lods[LodLevel];
-        OutItems.push_back({ MeshAsset, ResolveMaterial(static_cast<int32>(i)),
+        OutItems.push_back({ MeshAsset, CachedSlotMaterials[i],
             static_cast<int32>(Lod.FirstIndex), static_cast<int32>(Lod.IndexCount), 0u });
     }
     return true;
@@ -208,6 +222,7 @@ void UStaticMeshComponent::SetMaterial(int32 Slot, const FName& InMaterialId)
     }
 
     OverrideMaterials[Slot] = InMaterialId;
+    InvalidateMaterialCache();
 }
 
 void UStaticMeshComponent::FillMaterial(int32 Slot, FRenderData& OutData) const
@@ -291,6 +306,7 @@ void UStaticMeshComponent::Deserialize(const FArchive& Archive)
         {
             OverrideMaterials.push_back(Material);
         }
+        InvalidateMaterialCache();
     }
     if (!Archive.IsNull("bIsMovingUV"))
     {
