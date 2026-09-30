@@ -30,8 +30,8 @@ struct FImguiStatFps final
 			std::max(TopLeft.Y * DisplaySize.y, MainViewport->WorkPos.y) + Margin);
 
 		ImFont* Font = ImGui::GetFont();
-		const float FontSize = 21.f;
-		const float RowMargin = 25.f;
+		const float FontSize = 28.f;
+		const float RowMargin = 34.f;
 
 		char FpsBuf[64];
 		char ResolutionBuf[64];
@@ -40,7 +40,7 @@ struct FImguiStatFps final
 
 		// 가운데 줄은 FImguiStatPicking이 그린다
 		ImDrawList* DrawList = ImGui::GetForegroundDrawList();
-		DrawList->AddText(Font, FontSize, PosPixel, IM_COL32(75, 255, 75, 255), FpsBuf);
-		DrawList->AddText(Font, FontSize, ImVec2(PosPixel.x, PosPixel.y + RowMargin * 2.f), IM_COL32(75, 255, 75, 255), ResolutionBuf);
+		DrawList->AddText(Font, FontSize, PosPixel, IM_COL32(0, 170, 0, 255), FpsBuf);
+		DrawList->AddText(Font, FontSize, ImVec2(PosPixel.x, PosPixel.y + RowMargin * 2.f), IM_COL32(0, 170, 0, 255), ResolutionBuf);
 	}
 };

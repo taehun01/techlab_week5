@@ -52,19 +52,21 @@ void FImguiManager::NewFrame()
 
 		ImGuiID MainID = DockSpaceID;
 
-		ImGuiID RightID = ImGui::DockBuilderSplitNode(MainID, ImGuiDir_Right, 0.33f, nullptr, &MainID);
-		ImGuiID RightRemaining = RightID;
+		// 창 전체 렌더링 모드: 패널용 분할 영역을 만들지 않는다.
+		// Viewport 창은 FImguiEditorViewportWindow::BeginWindow에서 창 전체 크기로 직접 배치한다.
+		//ImGuiID RightID = ImGui::DockBuilderSplitNode(MainID, ImGuiDir_Right, 0.33f, nullptr, &MainID);
+		//ImGuiID RightRemaining = RightID;
 		//ImGuiID PropertyWindowID = ImGui::DockBuilderSplitNode(RightRemaining, ImGuiDir_Up, 0.4f, nullptr, &RightRemaining);
-		ImGuiID ControlPanelID = RightRemaining;
+		//ImGuiID ControlPanelID = RightRemaining;
 
-		ImGuiID ConsoleID = ImGui::DockBuilderSplitNode(MainID, ImGuiDir_Down, 0.25f, nullptr, &MainID);
+		//ImGuiID ConsoleID = ImGui::DockBuilderSplitNode(MainID, ImGuiDir_Down, 0.25f, nullptr, &MainID);
 
-		ImGui::DockBuilderDockWindow("Viewport", MainID);
+		//ImGui::DockBuilderDockWindow("Viewport", MainID);
 		//ImGui::DockBuilderDockWindow("World Outliner", PropertyWindowID);
 		//ImGui::DockBuilderDockWindow("Jungle Property Window", PropertyWindowID);
-		ImGui::DockBuilderDockWindow("Jungle Control Panel", ControlPanelID);
+		//ImGui::DockBuilderDockWindow("Jungle Control Panel", ControlPanelID);
 		//ImGui::DockBuilderDockWindow("Content Drawer", ConsoleID);
-		ImGui::DockBuilderDockWindow("Console Window", ConsoleID);
+		//ImGui::DockBuilderDockWindow("Console Window", ConsoleID);
 
 		ImGui::DockBuilderFinish(DockSpaceID);
 

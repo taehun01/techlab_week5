@@ -15,13 +15,13 @@ const void FImguiStatPicking::Process(FEditor& InEditor) const
 		std::max(TopLeft.Y * DisplaySize.y, MainViewport->WorkPos.y) + Margin);
 
 	ImFont* Font = ImGui::GetFont();
-	const float FontSize = 21.f;
-	const float RowMargin = 25.f;
+	const float FontSize = 28.f;
+	const float RowMargin = 34.f;
 
 	char PickingBuf[128];
 	std::snprintf(PickingBuf, sizeof(PickingBuf), "Picking Time %.3f ms : Num Attempts %d : Accumulated Time %.3f ms",
 		STATS.GetPickingTime(), STATS.GetNumAttempts(), STATS.GetAccumulatedTime());
 
 	ImDrawList* DrawList = ImGui::GetForegroundDrawList();
-	DrawList->AddText(Font, FontSize, ImVec2(PosPixel.x, PosPixel.y + RowMargin), IM_COL32(75, 255, 75, 255), PickingBuf);
+	DrawList->AddText(Font, FontSize, ImVec2(PosPixel.x, PosPixel.y + RowMargin), IM_COL32(0, 170, 0, 255), PickingBuf);
 }

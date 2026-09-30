@@ -33,44 +33,44 @@ void FImguiEditorViewportWindow::Process(FEditor& Editor, float DeltaTime)
     const ImVec2 WinSize = ImGui::GetWindowSize();
     const FVector2 MousePos = FInputManager::Get().GetMousePosition();
 
-    // 뷰포트 모드 전환 버튼
-    constexpr float ButtonWidth = 60.0f;
-    constexpr float ButtonHeight = 18.0f;
+    // 창 전체 렌더링 모드: 뷰포트 모드 전환 버튼은 띄우지 않는다
+    //constexpr float ButtonWidth = 60.0f;
+    //constexpr float ButtonHeight = 18.0f;
 
-    const ImVec2 BtnMin{ WinPos.x + WinSize.x - ButtonWidth - 16.0f, WinPos.y + 20.0f };
-    const ImVec2 BtnMax{ BtnMin.x + ButtonWidth, BtnMin.y + ButtonHeight };
+    //const ImVec2 BtnMin{ WinPos.x + WinSize.x - ButtonWidth - 16.0f, WinPos.y + 20.0f };
+    //const ImVec2 BtnMax{ BtnMin.x + ButtonWidth, BtnMin.y + ButtonHeight };
 
-    const bool bBtnHovered = (MousePos.X >= BtnMin.x && MousePos.X <= BtnMax.x && MousePos.Y >= BtnMin.y && MousePos.Y <= BtnMax.y);
-    const bool bBtnClicked = bBtnHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+    //const bool bBtnHovered = (MousePos.X >= BtnMin.x && MousePos.X <= BtnMax.x && MousePos.Y >= BtnMin.y && MousePos.Y <= BtnMax.y);
+    //const bool bBtnClicked = bBtnHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left);
 
-    if (bBtnHovered)
-    {
-        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
-    }
-    
-    ImDrawList* FG = ImGui::GetWindowDrawList();
-    const ImU32 BgColor = bBtnClicked ? IM_COL32(35, 55, 85, 255) : (bBtnHovered ? IM_COL32(65, 85, 120, 240) : IM_COL32(45, 55, 75, 220));
-    
-    FG->AddRectFilled(BtnMin, BtnMax, BgColor, 3.0f);
-    FG->AddRect(BtnMin, BtnMax, IM_COL32(110, 130, 160, 255), 3.0f);
-    
-    const char* BtnLabel = Editor.bIsViewportSplit ? "Single" : "4-Split";
-    const ImVec2 LabelSize = ImGui::CalcTextSize(BtnLabel);
-    
-    FG->AddText(ImVec2(BtnMin.x + (ButtonWidth - LabelSize.x) * 0.5f, BtnMin.y + (ButtonHeight - LabelSize.y) * 0.5f), IM_COL32(235, 235, 235, 255), BtnLabel);
-    
-    if (bBtnClicked)
-    {
-        Editor.bIsViewportSplit = !Editor.bIsViewportSplit;
+    //if (bBtnHovered)
+    //{
+    //    ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    //}
+    //
+    //ImDrawList* FG = ImGui::GetWindowDrawList();
+    //const ImU32 BgColor = bBtnClicked ? IM_COL32(35, 55, 85, 255) : (bBtnHovered ? IM_COL32(65, 85, 120, 240) : IM_COL32(45, 55, 75, 220));
+    //
+    //FG->AddRectFilled(BtnMin, BtnMax, BgColor, 3.0f);
+    //FG->AddRect(BtnMin, BtnMax, IM_COL32(110, 130, 160, 255), 3.0f);
+    //
+    //const char* BtnLabel = Editor.bIsViewportSplit ? "Single" : "4-Split";
+    //const ImVec2 LabelSize = ImGui::CalcTextSize(BtnLabel);
+    //
+    //FG->AddText(ImVec2(BtnMin.x + (ButtonWidth - LabelSize.x) * 0.5f, BtnMin.y + (ButtonHeight - LabelSize.y) * 0.5f), IM_COL32(235, 235, 235, 255), BtnLabel);
+    //
+    //if (bBtnClicked)
+    //{
+    //    Editor.bIsViewportSplit = !Editor.bIsViewportSplit;
 
-        // 4-Split 모드로 진입했을 때만 카메라 트랜스폼 초기화 실행
-        if (Editor.bIsViewportSplit)
-        {
-            Editor.ResetSplitViewportCameras();
-        }
-        EndWindow();
-        return;
-    }
+    //    // 4-Split 모드로 진입했을 때만 카메라 트랜스폼 초기화 실행
+    //    if (Editor.bIsViewportSplit)
+    //    {
+    //        Editor.ResetSplitViewportCameras();
+    //    }
+    //    EndWindow();
+    //    return;
+    //}
 
 
 
@@ -122,19 +122,20 @@ void FImguiEditorViewportWindow::Process(FEditor& Editor, float DeltaTime)
         }
     }
 
-    if (Editor.bIsViewportSplit)
-    {
-        // 4분할 모드: 활성화된 모든 뷰포트의 버튼 표시
-        for (FEditorViewport& VP : Viewports)
-        {
-            VP.Process();
-        }
-    }
-    else
-    {
-        // 단일 뷰포트 모드: 메인(0번) 뷰포트의 버튼만 표시
-        Viewports[0].Process();
-    }
+    // 창 전체 렌더링 모드: 뷰포트 위 오버레이 버튼은 띄우지 않는다
+    //if (Editor.bIsViewportSplit)
+    //{
+    //    // 4분할 모드: 활성화된 모든 뷰포트의 버튼 표시
+    //    for (FEditorViewport& VP : Viewports)
+    //    {
+    //        VP.Process();
+    //    }
+    //}
+    //else
+    //{
+    //    // 단일 뷰포트 모드: 메인(0번) 뷰포트의 버튼만 표시
+    //    Viewports[0].Process();
+    //}
     
 
     EndWindow();
@@ -331,7 +332,14 @@ void FImguiEditorViewportWindow::BeginWindow() const
     constexpr ImGuiWindowFlags WindowFlags =
         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse |
         ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground |
-        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus |
+        // 창 전체 렌더링 모드: 타이틀바/도킹 없이 메인 창 전체를 덮는 입력 영역으로만 쓴다
+        ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoSavedSettings;
+
+    const ImGuiViewport* MainViewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(MainViewport->Pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(MainViewport->Size, ImGuiCond_Always);
 
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);

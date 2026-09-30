@@ -22,6 +22,7 @@
 #include "Runtime/CoreUObject/UPlaneComp.h"
 #include "Runtime/CoreUObject/USphereComp.h"
 #include "Runtime/Core/FStatRegistry.h"
+#include "Runtime/Input/FInputManager.h"
 
 #include "Editor/Visualizer/IVisualizer.h"
 
@@ -105,6 +106,8 @@ void FEditorApplication::Initialize_Runtime(USceneManager *SceneManager, FRender
   // 원근 뷰포트를 활성화하고 상태 복원
   Editor.SetActiveViewportIndex(0);
   Editor.LoadState();
+  // 분할 전환 버튼을 띄우지 않으므로 저장된 상태와 관계없이 단일 뷰포트로 시작
+  Editor.bIsViewportSplit = false;
 
 #endif
 }
@@ -147,12 +150,24 @@ void FEditorApplication::Tick(float DeltaTime) {
 #else
     {
         ZoneScopedN("UI Windows");
-        ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
+        // 창 전체 렌더링 모드: 패널은 띄우지 않고 뷰포트 입력과 스탯 오버레이만 처리
+        //ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
         EditorViewportWindow.Process(Editor, DeltaTime);
         //WorldOutliner.Process(Editor);
-        ControlPanelWindow.Process(Editor);
+        //ControlPanelWindow.Process(Editor);
         //PropertyWindow.Process(Editor);
-        ConsoleWindow.Process(Editor);
+        //ConsoleWindow.Process(Editor);
+
+        // 툴바를 띄우지 않으므로 Ctrl + O 로 씬 불러오기
+        FInputManager& Input = FInputManager::Get();
+        if (Input.IsKeyDown(VK_CONTROL) && Input.IsKeyJustPressed('O'))
+        {
+            FString Path;
+            if (ToolBar.PickSceneFile(Path, false))
+            {
+                Editor.LoadScene(Path);
+            }
+        }
         //ContentsDrawer.Process(Editor);
         OverlayStat.Process(Editor);
         STATS.Reset();
