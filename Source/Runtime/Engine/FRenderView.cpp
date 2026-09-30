@@ -54,6 +54,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 {
     ZoneScopedN("CollectScenePrimitives");
     auto& ResLib = FRenderResourceLibrary::Get();
+    const FCamera& Camera = *View.Camera;
 
     // D3D 클립 변환을 ViewProj에 한 번만 곱해 둔다. 오브젝트마다 MVP에 곱하던 것과 결과는 같다.
     // 이렇게 만든 MVP는 DrawRenderData에서 bConstantsInD3DClip=true로 그린다.
@@ -63,9 +64,13 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     //    실험: 전부 보이는 씬에서는 컬링 비용(옥트리 질의 + 오브젝트별 AABB/프러스텀 검사)이 순수 손해라서 뺐다.
     const TArray<UMeshComponent*>& Candidates = Scene.GetRenderComponents();
 
+    FLodFrameParams LodFrameParams = MakeLodFrameParams(Renderer.GetViewportHeight(), Camera);
+    FLodSelectSettings LodSetting = {};
+    //LodSetting.ForceLod = 2u;
+    PrepareMeshLodDistance(LodFrameParams, LodSetting);
+
     // 2) 병렬 단계: 컴포넌트별 월드 행렬·카메라 거리를 계산한다.
     //    여기서는 읽기만 하는 함수만 호출한다 (상태를 바꾸는 머티리얼 조회 등은 3단계에서 순차로).
-    const FCamera& Camera = *View.Camera;
     const float NearZ = Camera.Projection.NearZ;
     const float FarZ = Camera.Projection.FarZ;
     const uint64 ShowFlags = static_cast<uint64>(View.ShowFlags);
@@ -91,12 +96,33 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
                 // 정렬 키용 카메라 거리 (Near~Far를 24비트로 양자화)
                 const FVector CameraToMesh = MeshComponent->GetGlobalTransform().Location - Camera.Position;
                 float Distance = CameraToMesh.Size();
-                Distance = Distance < FarZ ? Distance : FarZ;
-                Distance = Distance > NearZ ? Distance : NearZ;
-                const float NormalizedDistance = (Distance - NearZ) / (FarZ - NearZ);
+                float ClipDistance = Distance < FarZ ? Distance : FarZ;
+                ClipDistance = ClipDistance > NearZ ? ClipDistance : NearZ;
+                const float NormalizedDistance = (ClipDistance - NearZ) / (FarZ - NearZ);
                 Result.QuantizedDistance = static_cast<uint32>(0xffffff * NormalizedDistance);
 
                 Result.bVisible = true;
+
+                // Select LOD Level
+                FStaticMesh* StaticMesh = MeshComponent->GetFStaticMesh();
+                Result.LodLevel = 0u;
+                if (!StaticMesh) continue;
+
+                float WorldScale = 0.f;
+                for (uint32 j = 0; j < 3; ++j)
+                {
+                    float SquaredSum = Result.World.M[j][0] * Result.World.M[j][0]
+                                        + Result.World.M[j][1] * Result.World.M[j][1]
+                                        + Result.World.M[j][2] * Result.World.M[j][2];
+                    if (WorldScale < SquaredSum)
+                    {
+                        WorldScale = SquaredSum;
+                    }
+                }
+                WorldScale = sqrtf(WorldScale);
+
+                Result.LodLevel = SelectLod(StaticMesh, WorldScale, Distance, MeshComponent->GetLastLod(), LodSetting, LodFrameParams);
+                MeshComponent->SetLastLod(Result.LodLevel);
             }
         });
     }
@@ -122,7 +148,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
         TArray<FRenderData>& RenderDatas = ComponentRenderDatas;
         RenderDatas.clear();
-        MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas);
+        MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas, bSelected ? 0 : Cull.LodLevel);
         // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
         if (RenderDatas.empty()) continue;
 
@@ -603,4 +629,80 @@ uint64 FRenderView::GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint3
     }
 
     return SortKey;
+}
+
+FLodFrameParams FRenderView::MakeLodFrameParams(float ViewportHeight, const FCamera& Camera)
+{
+    FLodFrameParams Output;
+    if (Camera.Projection.ProjectionType == EProjectionType::Perspective)
+    {
+        float FOV = Camera.Projection.FOV * 3.141592653 / 180.f;
+        Output.ProjScale = ViewportHeight / (2 * tanf(FOV / 2));
+        Output.bIsOrthogonal = false;
+    }
+    else
+    {
+        Output.ProjScale = ViewportHeight / Camera.Projection.Height;
+        Output.bIsOrthogonal = true;
+    }
+    return Output;
+}
+
+void FRenderView::PrepareMeshLodDistance(const FLodFrameParams& Params, const FLodSelectSettings& Setting)
+{
+    for (const auto& [Key, Mesh]: FRenderResourceLibrary::Get().GetAllUStaticMeshMap())
+    {
+        FStaticMesh* StaticMesh = Mesh->GetStaticMeshAsset().get();
+        if (StaticMesh && StaticMesh->GetMeshLodCount() > 1)
+        {
+            for (uint32 i = 0; i < MAX_MESH_LOD; ++i)
+            {
+                float LodError = StaticMesh->GetMeshLodErrors()[i];
+                StaticMesh->LodSwitchDistance[i] = LodError * Params.ProjScale / Setting.AllowedErrorPixels;
+            }
+        }
+    }
+}
+
+uint8 FRenderView::SelectLod(const FStaticMesh* StaticMesh, float Scale, float Distance, uint8 PrevLod, const FLodSelectSettings& Setting, const FLodFrameParams& Params)
+{
+    uint32 MeshLodCount = StaticMesh->GetMeshLodCount();
+
+    if (MeshLodCount <= 1)
+    {
+        return 0u;
+    }
+
+    if (Setting.ForceLod != -1)
+    {
+        return Setting.ForceLod;
+    }
+    uint8 SelectedLod = 0u;
+    for (int32 CurrentLod = static_cast<int32>(MeshLodCount) - 1; CurrentLod >= 0; --CurrentLod)
+    {
+        float LodSwitchDistance = StaticMesh->LodSwitchDistance[CurrentLod];
+        
+        if (CurrentLod > PrevLod)
+        {
+            LodSwitchDistance *= (1 + Setting.Hysteresis);
+        }
+        if (Params.bIsOrthogonal)
+        {
+            if (StaticMesh->GetSections()[0].LodErrors[CurrentLod] * Scale * Params.ProjScale > Setting.AllowedErrorPixels)
+            {
+                SelectedLod = static_cast<uint8>(CurrentLod);
+                break;
+            }
+        }
+        else
+        {
+            if (Distance > LodSwitchDistance * Scale)
+            {
+                SelectedLod = static_cast<uint8>(CurrentLod);
+                break;
+            }
+        }
+
+    }
+    return SelectedLod;
 }

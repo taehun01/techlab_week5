@@ -23,7 +23,7 @@ public:
     void UpdateLocalBounds() override;
 
     TArray<FRenderData> GetRenderDatas(const FCamera& Camera) override;
-    void AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas) override;
+    void AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas, uint32 LodLevel = 0u) override;
     const FRenderData& GetPureRenderData() const override;
 
     // 머티리얼 오버라이드
@@ -35,6 +35,8 @@ public:
 
     virtual void Serialize(FArchive& Archive) const override;
     virtual void Deserialize(const FArchive& Archive) override;
+
+    virtual FStaticMesh* GetFStaticMesh() const override { return StaticMesh ? StaticMesh->GetStaticMeshAsset().get() : nullptr; } 
 
 protected:
     UStaticMeshComponent() = default;

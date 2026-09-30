@@ -7,8 +7,9 @@
 #include "Runtime/Rendering/FRenderer.h"
 #include "Runtime/Rendering/FRenderQueue.h"
 #include "Runtime/Engine/FSceneView.h"
-#include <Editor\UI\Imgui\FImguiPreviewEditorWindow.h>
+#include "Editor/UI/Imgui/FImguiPreviewEditorWindow.h"
 #include "Runtime/Core/FStatRegistry.h"
+#include "Runtime/Rendering/FLodSettings.h"
 
 struct FCamera;
 class FGizmo;
@@ -33,6 +34,7 @@ class FRenderView final {
 		FMatrix World;
 		uint32 QuantizedDistance = 0;
 		bool bVisible = false;
+		uint8 LodLevel = 0u;
 	};
 	// 컴포넌트별 계산 결과. 매 프레임 크기만 맞추고 용량은 유지한다.
 	TArray<FPrimitiveCullResult> CullResults;
@@ -97,4 +99,10 @@ public:
 	const FRenderQueue& GetRenderQueue() const { return RenderQueue; }
 
 	static uint64 GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint32 Depth);
+
+	static FLodFrameParams MakeLodFrameParams(float ViewportHeight, const FCamera& Camera);
+
+	static void PrepareMeshLodDistance(const FLodFrameParams& Params, const FLodSelectSettings& Setting);
+
+	static uint8 SelectLod(const FStaticMesh* StaticMesh, float Scale, float Distance, uint8 PrevLod, const FLodSelectSettings& Setting, const FLodFrameParams& Params);
 };

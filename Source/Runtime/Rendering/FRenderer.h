@@ -142,6 +142,8 @@ public:
     // Tracy GPU 구간 계측용 컨텍스트. TracyD3D11Zone(Renderer.GetGpuProfiler(), "이름")으로 쓴다.
     [[nodiscard]] TracyD3D11Ctx GetGpuProfiler() const { return GpuProfiler; }
 
+    float GetViewportHeight() { return Viewport.Height; }
+
 private:
     bool InitializeDeviceAndSwapChain(HWND Window);
     bool InitializeBackBufferAndDepthStencil();

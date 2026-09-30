@@ -1682,7 +1682,7 @@ bool FRenderResourceLibrary::CreateObjMeshes()
         StaticMesh->PathFileName = ObjFile.string();
         StaticMesh->MeshId = MeshKey;
         StaticMesh->Sections = std::move(ModelData.Sections);
-        StaticMesh->BuildMeshLodSummery();
+        StaticMesh->BuildMeshLodSummary();
 
         // 첫 피킹 때 빌드 지연이 생기지 않도록 로드 시점에 BVH를 미리 빌드한다.
         (void)StaticMesh->GetBVH();

@@ -84,7 +84,7 @@ TArray<FRenderData> UStaticMeshComponent::GetRenderDatas(const FCamera& Camera)
     return OutDatas;
 }
 
-void UStaticMeshComponent::AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas)
+void UStaticMeshComponent::AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas, uint32 LodLevel)
 {
     if (!StaticMesh || !StaticMesh->StaticMeshAsset)
     {
@@ -107,9 +107,9 @@ void UStaticMeshComponent::AppendRenderDatas(const FCamera& Camera, TArray<FRend
             rdata.MeshId = CurrentMeshId;
             rdata.MeshPtr = MeshAsset;
             FillMaterial(static_cast<int32>(i), rdata);
-
-            rdata.startidx = Sections[i].FirstIndex;
-            rdata.indicesCount = Sections[i].IndexCount;
+            uint32 Lod = std::min(LodLevel, MeshAsset->GetMeshLodCount() - 1);
+            rdata.startidx = Sections[i].Lods[Lod].FirstIndex;
+            rdata.indicesCount = Sections[i].Lods[Lod].IndexCount;
 
             if (bIsMovingUV)
             {

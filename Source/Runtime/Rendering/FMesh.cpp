@@ -119,16 +119,19 @@ bool FStaticMesh::UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Conte
 	return true;
 }
 
-void FStaticMesh::BuildMeshLodSummery()
+void FStaticMesh::BuildMeshLodSummary()
 {
 	// 각 LOD별 섹션 중 최대 에러 값 계산
 	constexpr int32 NOT_INIT_MIN = -1;
 
-	TArray<uint32> MaxError;
-	TArray<int32> MinCount;
+	TArray<float> MaxError;
+	int32 MinCount = NOT_INIT_MIN;
 	MaxError.resize(MAX_MESH_LOD, 0);
-	MinCount.resize(MAX_MESH_LOD, NOT_INIT_MIN);
 
+	if (Sections.size() <= 0)
+	{
+		MeshLodCount = 1;
+	}
 	for (const auto& Section : Sections)
 	{
 		for (uint32 i = 0; i < MAX_MESH_LOD; ++i)
@@ -137,10 +140,11 @@ void FStaticMesh::BuildMeshLodSummery()
 			{
 				MaxError[i] = Section.LodErrors[i];
 			}
-			if (MinCount[i] == NOT_INIT_MIN || MinCount[i] > Section.LodCount)
-			{
-				MinCount[i] = Section.LodCount;
-			}
+
+		}
+		if (MinCount == NOT_INIT_MIN || MinCount > Section.LodCount)
+		{
+			MinCount = Section.LodCount;
 		}
 	}
 
@@ -148,4 +152,5 @@ void FStaticMesh::BuildMeshLodSummery()
 	{
 		MeshLodErrors[i] = MaxError[i];
 	}
+	MeshLodCount = static_cast<uint32>(MinCount);
 }

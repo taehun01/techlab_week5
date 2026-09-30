@@ -78,7 +78,7 @@ public:
     static constexpr size_t MaxArchiveBytes = 512ULL * 1024 * 1024;
 
 private:
-    static constexpr uint32 ObjFileSignature = 0x4D4A424F; // "OBJM"
+    static constexpr uint32 ObjFileSignature = 0x4C4A424F; // "OBJL"
     static constexpr uint32 MaterialFileSignature = 0x4C54414D; // "MATL"
     static constexpr uint32 MaxElementCount = 16 * 1024 * 1024;
 

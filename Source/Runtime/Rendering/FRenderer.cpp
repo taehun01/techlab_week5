@@ -177,7 +177,7 @@ TSharedPtr<FStaticMesh> FRenderer::CreateMesh(const FMeshDesc &Desc) {
     TArray<uint16> Indices16;
     if (bUse16BitIndices) {
       const auto *Indices32 = static_cast<const uint32 *>(Desc.IndexData);
-      Indices16.assign(Indices32, Indices32 + CpuIndexCount);
+      Indices16.assign(Indices32, Indices32 + Desc.IndexCount);
     }
 
     D3D11_BUFFER_DESC IndexBufferDesc = {
@@ -511,6 +511,11 @@ bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
       &SwapChainDesc, &SwapChain, &Device, nullptr, &Context);
   if (FAILED(Result)) {
     return false;
+  }
+
+  Microsoft::WRL::ComPtr<IDXGIDevice1> DxgiDevice;
+  if (SUCCEEDED(Device.As(&DxgiDevice))) {
+      DxgiDevice->SetMaximumFrameLatency(1);
   }
 
   RECT ClientRect{};

@@ -74,14 +74,14 @@ public:
 	[[nodiscard]] uint32 GetVertexBufferSize() { return VertexBufferSize; }
 	[[nodiscard]] uint32 GetIndexBufferSize() { return IndexBufferSize; }
 	[[nodiscard]] float* GetMeshLodErrors() { return MeshLodErrors; }
-	[[nodiscard]] uint32 GetMeshLodCount() { return MeshLodCount; }
+	[[nodiscard]] uint32 GetMeshLodCount() const { return MeshLodCount; }
 	void SetMeshLodCount(uint32 InCount) { MeshLodCount = InCount; }
 
 
 	// 버퍼 데이터 갱신
 	bool UpdateBuffers(ID3D11Device* Device, ID3D11DeviceContext* Context, const struct FMeshDesc& Desc);
 
-	void BuildMeshLodSummery();
+	void BuildMeshLodSummary();
 
 	// 공개 에셋 속성
 	FName MeshId{ "None" };
@@ -92,6 +92,8 @@ public:
 	FString PathFileName;
 	TArray<FMeshSection> Sections;
 	uint16 SortID = 0u;
+
+	float LodSwitchDistance[MAX_MESH_LOD] = {};
 private:
 	void BindResources(ID3D11DeviceContext& Context) const;
 
@@ -109,7 +111,7 @@ private:
 	// LOD0 인덱스 카운트
 	uint32 IndexCount = 0u;
 	// LOD 포함 전체 인덱스 카운드 
-	uint32 TotalIndexCount = 0u;
+	//uint32 TotalIndexCount = 0u;
 
 	TArray<FVector> Positions;
 	TArray<uint32> Indices;

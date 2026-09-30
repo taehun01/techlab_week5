@@ -22,7 +22,7 @@ public:
     // OutDatas 뒤에 이번 프레임의 FRenderData를 덧붙인다.
     // 렌더러는 매 프레임 같은 배열을 재사용해 호출하므로, 오버라이드하면 오브젝트마다 배열 할당이 생기지 않는다.
     // 기본 구현은 GetRenderDatas 결과를 옮겨 담는다.
-    virtual void AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas) {
+    virtual void AppendRenderDatas(const FCamera& Camera, TArray<FRenderData>& OutDatas, uint32 LodLevel = 0u ) {
         TArray<FRenderData> Datas = GetRenderDatas(Camera);
         OutDatas.insert(OutDatas.end(), std::make_move_iterator(Datas.begin()), std::make_move_iterator(Datas.end()));
     }
@@ -44,8 +44,14 @@ public:
     virtual void Serialize(FArchive& Archive) const override;
     virtual void Deserialize(const FArchive& Archive) override;
 
+    void SetLastLod(uint8 Lod) { LastLod = Lod; }
+    uint8 GetLastLod() { return LastLod; }
+    virtual FStaticMesh* GetFStaticMesh() const { return nullptr; }
+
 protected:
     UMeshComponent() = default;
+
+    uint8 LastLod = 0u;
 
     TArray<FRenderData> RenderDatas;
 };
