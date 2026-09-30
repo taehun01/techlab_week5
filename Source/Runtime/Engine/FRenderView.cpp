@@ -64,23 +64,6 @@ void ComputeColorOverride(const UMeshComponent& MeshComponent, bool bSelected, F
         OutAmount = 0.5f;
     }
 }
-
-// 드로우 항목의 패스(불투명·반투명)와 깊이를 뺀 정렬 키를 미리 계산한다 (GetSortKey와 같은 규칙)
-FCachedDrawItem MakeCachedDrawItem(const FDrawItem& Item)
-{
-    FCachedDrawItem Cached;
-    Cached.Item = Item;
-
-    const EBlendMode BlendMode = Item.Material->GetBlendMode();
-    Cached.bTranslucent = BlendMode == EBlendMode::Additive || BlendMode == EBlendMode::Translucent;
-    Cached.SortKeyBase = FRenderView::GetSortKey(Item.Material, Item.Mesh, 0u);
-
-    // GetSortKey는 파이프라인이 있고 불투명·반투명 블렌드일 때만 깊이를 하위 24비트에 넣는다
-    const bool bUsesDepth = Item.Material->GetPipeline()
-        && (BlendMode == EBlendMode::Opaque || BlendMode == EBlendMode::Translucent);
-    Cached.DepthMask = bUsesDepth ? 0xffffffu : 0u;
-    return Cached;
-}
 }
 
 FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
@@ -171,7 +154,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
                 // Select LOD Level
                 FStaticMesh* StaticMesh = MeshComponent->GetFStaticMesh();
-                Result.StaticMesh = StaticMesh;
                 Result.LodLevel = 0u;
                 if (!StaticMesh) continue;
 
@@ -199,46 +181,8 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     // 3) 순차 단계: 보이는 컴포넌트의 드로우 항목을 만들어 큐에 넣는다.
     //    정적 메시는 AppendDrawItems(경량 경로)로 FRenderData 생성·복사 없이 포인터와 인덱스 범위만 넣고,
     //    컴포넌트 단위 상수는 컴포넌트당 한 번만 저장한다. 나머지(빌보드·텍스트 등)는 기존 AppendRenderDatas 경로.
-    //    경량 경로의 드로우 항목과 정렬 키는 컴포넌트에 캐시해 두고, 에포크·LOD·메시가 바뀔 때만 다시 만든다.
     FMaterial* const SimpleMaterial = ResLib.GetMaterial(FName("Simple")).get();
     const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
-    const uint32 MaterialEpoch = FRenderResourceLibrary::GetMaterialBindingEpoch();
-
-    // 컴포넌트의 드로우 항목 캐시를 다시 만든다. 경량 경로를 지원하지 않으면 false.
-    const auto RebuildDrawItemCache = [&](UMeshComponent& MeshComponent, uint32 LodLevel, const FStaticMesh* StaticMesh)
-    {
-        TArray<FDrawItem>& DrawItems = ComponentDrawItems;
-        DrawItems.clear();
-        FVector2 UVOffset;
-        if (!MeshComponent.AppendDrawItems(LodLevel, DrawItems, UVOffset))
-        {
-            return false;
-        }
-
-        TArray<FCachedDrawItem>& CachedItems = MeshComponent.ResetDrawItemCache(MaterialEpoch, LodLevel, StaticMesh);
-        for (FDrawItem& Item : DrawItems)
-        {
-            if (!Item.Material) Item.Material = SimpleMaterial;
-            CachedItems.push_back(MakeCachedDrawItem(Item));
-        }
-        return true;
-    };
-
-    // 캐시된 항목에 상수 인덱스와 깊이를 채워 큐에 넣는다
-    const auto PushCachedItem = [this](const FCachedDrawItem& Cached, uint32 PrimitiveIndex, bool bPersistentConstants, uint32 QuantizedDistance)
-    {
-        FDrawItem Item = Cached.Item;
-        Item.PrimitiveIndex = PrimitiveIndex;
-        Item.bPersistentConstants = bPersistentConstants;
-        if (Cached.bTranslucent)
-        {
-            RenderQueue.PushTranslucent(Item, Cached.SortKeyBase | ((0xffffff - QuantizedDistance) & Cached.DepthMask));
-        }
-        else
-        {
-            RenderQueue.PushOpaque(Item, Cached.SortKeyBase | (QuantizedDistance & Cached.DepthMask));
-        }
-    };
 
     // 머티리얼의 블렌드 모드에 따라 불투명·반투명 큐로 분기 (Material·Mesh는 항상 유효)
     const auto PushItem = [this](const FDrawItem& Item, uint32 QuantizedDistance)
@@ -266,55 +210,59 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         const bool bSelected = SelectedActor && MeshComponent->GetActorOwner() == SelectedActor;
         const uint32 LodLevel = bSelected ? 0u : Cull.LodLevel;
 
-        // 경량 경로: 캐시가 유효하면 그대로 쓰고, 아니면 AppendDrawItems로 다시 만든다
-        const bool bFastPath = MeshComponent->IsDrawItemCacheValid(MaterialEpoch, LodLevel, Cull.StaticMesh)
-            || RebuildDrawItemCache(*MeshComponent, LodLevel, Cull.StaticMesh);
+        // 경량 경로 먼저 시도
+        TArray<FDrawItem>& DrawItems = ComponentDrawItems;
+        DrawItems.clear();
+        FVector2 UVOffset;
+        const bool bFastPath = MeshComponent->AppendDrawItems(LodLevel, DrawItems, UVOffset);
+
+        TArray<FRenderData>& RenderDatas = ComponentRenderDatas;
+        RenderDatas.clear();
+        if (!bFastPath)
+        {
+            MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas, LodLevel);
+        }
+        // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
+        if (DrawItems.empty() && RenderDatas.empty()) continue;
+
+        // 영구 슬롯이 있으면 상수는 병렬 단계에서 이미 갱신됐다. 항목은 슬롯 번호만 들고 간다.
+        const uint32 PersistentSlot = MeshComponent->GetPersistentConstantSlot();
+        if (bFastPath && bUsePersistentConstants && PersistentSlot != FObjectConstantStore::InvalidSlot)
+        {
+            for (FDrawItem& Item : DrawItems)
+            {
+                if (!Item.Material) Item.Material = SimpleMaterial;
+                Item.PrimitiveIndex = PersistentSlot;
+                Item.bPersistentConstants = true;
+                PushItem(Item, QuantizedDistance);
+            }
+            continue;
+        }
+
+        // 여기부터는 이번 프레임에만 쓰는 상수 (빌보드·텍스트 등, 또는 영구 상수를 못 쓰는 환경)
+        FVector FinalColorOverride;
+        float   FinalColorOverrideAmount = 0.0f;
+        ComputeColorOverride(*MeshComponent, bSelected, FinalColorOverride, FinalColorOverrideAmount);
+
         if (bFastPath)
         {
-            const TArray<FCachedDrawItem>& CachedItems = MeshComponent->GetCachedDrawItems();
-            if (CachedItems.empty()) continue;
-
-            // 영구 슬롯이 있으면 상수는 병렬 단계에서 이미 갱신됐다. 항목은 슬롯 번호만 들고 간다.
-            const uint32 PersistentSlot = MeshComponent->GetPersistentConstantSlot();
-            if (bUsePersistentConstants && PersistentSlot != FObjectConstantStore::InvalidSlot)
-            {
-                for (const FCachedDrawItem& Cached : CachedItems)
-                {
-                    PushCachedItem(Cached, PersistentSlot, true, QuantizedDistance);
-                }
-                continue;
-            }
-
-            // 영구 상수를 못 쓰는 환경: 섹션들이 공유하는 상수를 한 번만 저장한다 (UVScale 등 나머지는 기본값)
-            FVector FinalColorOverride;
-            float   FinalColorOverrideAmount = 0.0f;
-            ComputeColorOverride(*MeshComponent, bSelected, FinalColorOverride, FinalColorOverrideAmount);
-
+            // 섹션들이 공유하는 상수를 한 번만 저장한다 (UVScale 등 나머지는 기본값)
             uint32 PrimitiveIndex = 0u;
             FObjectConstants& Constants = RenderQueue.AddPrimitive(PrimitiveIndex);
             Constants.World = World;
             Constants.ColorOverride = FinalColorOverride;
             Constants.ColorOverrideAmount = FinalColorOverrideAmount;
             Constants.DisableShading = DisableShading;
-            Constants.UVOffset = MeshComponent->GetRenderUVOffset();
+            Constants.UVOffset = UVOffset;
 
-            for (const FCachedDrawItem& Cached : CachedItems)
+            for (FDrawItem& Item : DrawItems)
             {
-                PushCachedItem(Cached, PrimitiveIndex, false, QuantizedDistance);
+                if (!Item.Material) Item.Material = SimpleMaterial;
+                Item.PrimitiveIndex = PrimitiveIndex;
+                PushItem(Item, QuantizedDistance);
             }
             continue;
         }
-
-        TArray<FRenderData>& RenderDatas = ComponentRenderDatas;
-        RenderDatas.clear();
-        MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas, LodLevel);
-        // 그릴 데이터가 없으면 다음 컴포넌트로
-        if (RenderDatas.empty()) continue;
-
-        // 여기부터는 이번 프레임에만 쓰는 상수 (빌보드·텍스트 등)
-        FVector FinalColorOverride;
-        float   FinalColorOverrideAmount = 0.0f;
-        ComputeColorOverride(*MeshComponent, bSelected, FinalColorOverride, FinalColorOverrideAmount);
 
         // 기존 경로: 슬롯별 RenderData 순회 처리
         for (FRenderData& Data : RenderDatas)

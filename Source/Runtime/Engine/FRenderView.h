@@ -34,7 +34,6 @@ class FRenderView final {
 	struct FPrimitiveCullResult
 	{
 		FMatrix World;
-		FStaticMesh* StaticMesh = nullptr;  // 드로우 항목 캐시 검증용
 		uint32 QuantizedDistance = 0;
 		bool bVisible = false;
 		uint8 LodLevel = 0u;

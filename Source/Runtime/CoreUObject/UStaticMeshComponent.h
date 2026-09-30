@@ -54,10 +54,10 @@ protected:
     FMaterial* ResolveMaterial(int32 Slot) const;
 
     // 슬롯별 ResolveMaterial 결과 캐시. 머티리얼 바인딩 에포크가 같고 슬롯 수가 같으면 그대로 쓴다.
-    // 이 컴포넌트의 오버라이드·메시가 바뀌면 MaterialCacheEpoch를 0으로 돌려 무효화한다 (드로우 항목 캐시도 함께).
+    // 이 컴포넌트의 오버라이드·메시가 바뀌면 MaterialCacheEpoch를 0으로 돌려 무효화한다.
     mutable TArray<FMaterial*> CachedSlotMaterials;
     mutable uint32 MaterialCacheEpoch = 0u;
-    void InvalidateMaterialCache() { MaterialCacheEpoch = 0u; InvalidateDrawItemCache(); }
+    void InvalidateMaterialCache() { MaterialCacheEpoch = 0u; }
 
     UStaticMesh* StaticMesh = nullptr;
     TArray<FName> OverrideMaterials;

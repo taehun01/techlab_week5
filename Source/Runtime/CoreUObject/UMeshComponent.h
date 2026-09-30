@@ -61,36 +61,11 @@ public:
     // 영구 상수에 넣을 UV 오프셋 (병렬 수집 단계에서 읽기 전용으로 호출된다)
     [[nodiscard]] virtual FVector2 GetRenderUVOffset() const { return FVector2{ 0.0f, 0.0f }; }
 
-    // 렌더 수집 단계의 드로우 항목 캐시 (AppendDrawItems 경량 경로 전용, FRenderView가 채운다).
-    // 머티리얼 바인딩 에포크·LOD·메시가 그대로면 AppendDrawItems와 정렬 키 계산을 건너뛰고 재사용한다.
-    [[nodiscard]] bool IsDrawItemCacheValid(uint32 Epoch, uint32 Lod, const FStaticMesh* Mesh) const
-    {
-        return DrawItemCacheEpoch == Epoch && DrawItemCacheLod == Lod && DrawItemCacheMesh == Mesh;
-    }
-    // 캐시를 비우고 새 조건으로 표시한 뒤, 채울 배열을 돌려준다
-    TArray<FCachedDrawItem>& ResetDrawItemCache(uint32 Epoch, uint32 Lod, const FStaticMesh* Mesh)
-    {
-        CachedDrawItems.clear();
-        DrawItemCacheEpoch = Epoch;
-        DrawItemCacheLod = Lod;
-        DrawItemCacheMesh = Mesh;
-        return CachedDrawItems;
-    }
-    [[nodiscard]] const TArray<FCachedDrawItem>& GetCachedDrawItems() const { return CachedDrawItems; }
-
 protected:
     UMeshComponent() = default;
 
-    // 이 컴포넌트의 머티리얼·메시 설정이 바뀌면 호출한다 (에포크는 1부터 시작하므로 0은 무효 표시)
-    void InvalidateDrawItemCache() { DrawItemCacheEpoch = 0u; }
-
     uint8 LastLod = 0u;
     uint32 PersistentConstantSlot = ~0u; // FObjectConstantStore::InvalidSlot
-
-    TArray<FCachedDrawItem> CachedDrawItems;
-    uint32 DrawItemCacheEpoch = 0u;
-    uint32 DrawItemCacheLod = 0u;
-    const FStaticMesh* DrawItemCacheMesh = nullptr;
 
     TArray<FRenderData> RenderDatas;
 };

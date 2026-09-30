@@ -40,16 +40,6 @@ struct FDrawItem
     bool bPersistentConstants = false;
 };
 
-// 컴포넌트에 캐시해 두는 드로우 항목. 패스 분기와 깊이를 뺀 정렬 키를 미리 계산해 둔다.
-// 정렬 키 = SortKeyBase | (패스별 깊이 & DepthMask)
-struct FCachedDrawItem
-{
-    FDrawItem Item;                  // Material은 기본 머티리얼로 대체된 상태. PrimitiveIndex는 큐에 넣을 때 채운다.
-    uint64 SortKeyBase = 0u;
-    uint32 DepthMask = 0u;           // 깊이를 키에 넣는 블렌드 모드면 0xffffff, 아니면 0
-    bool bTranslucent = false;
-};
-
 // 한 프레임의 드로우 요청을 수집하는 큐
 class FRenderQueue
 {
