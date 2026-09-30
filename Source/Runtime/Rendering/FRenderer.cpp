@@ -58,6 +58,7 @@ void FRenderer::Shutdown() {
   FrameConstantBuffer.Reset();
   ObjectConstantRing.Reset();
   ObjectConstantRingCapacity = 0u;
+  DefaultMaterialConstantBuffer.Reset();
   Context1.Reset();
 
   BackBufferRTV.Reset();
@@ -144,11 +145,9 @@ bool FRenderer::BeginObjectConstants(uint32 Count) {
   return true;
 }
 
-void FRenderer::WriteObjectConstants(uint32 SlotIndex, const FObjectConstants& Constants, const FMaterial& Material) {
-  FObjectConstants* Dst = reinterpret_cast<FObjectConstants*>(
-      MappedObjectConstants + static_cast<size_t>(SlotIndex) * ObjectConstantSlotSize);
-  *Dst = Constants;
-  Dst->MaterialDiffuse = Material.GetDiffuseColor();
+void FRenderer::WriteObjectConstants(uint32 SlotIndex, const FObjectConstants& Constants) {
+  std::memcpy(MappedObjectConstants + static_cast<size_t>(SlotIndex) * ObjectConstantSlotSize,
+              &Constants, sizeof(FObjectConstants));
 }
 
 void FRenderer::EndObjectConstants() {
@@ -820,6 +819,20 @@ bool FRenderer::InitializeConstantBuffers() {
   Result =
       Device->CreateBuffer(&lightbufferDesc, nullptr, &LightConstantBuffer);
 
+  if (FAILED(Result)) {
+    return false;
+  }
+
+  // 머티리얼 없이 그리는 경로용 b3 기본값 (MaterialDiffuse = 흰색)
+  const FMaterialConstants DefaultMaterialConstants{};
+  D3D11_BUFFER_DESC DefaultMaterialDesc = {
+      .ByteWidth = sizeof(FMaterialConstants),
+      .Usage = D3D11_USAGE_IMMUTABLE,
+      .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+  };
+  const D3D11_SUBRESOURCE_DATA DefaultMaterialData = {.pSysMem = &DefaultMaterialConstants};
+  Result = Device->CreateBuffer(&DefaultMaterialDesc, &DefaultMaterialData,
+                                &DefaultMaterialConstantBuffer);
   if (FAILED(Result)) {
     return false;
   }

@@ -148,9 +148,10 @@ public:
 
     // 오브젝트 상수 일괄 업로드: 드로우마다 b0를 Map/Unmap하는 대신
     // 큰 링 버퍼를 한 번만 Map해 Count개 슬롯을 채우고, 드로우 때는 슬롯 오프셋만 바인딩한다.
+    // 슬롯은 컴포넌트(프리미티브) 단위라 같은 컴포넌트의 섹션들이 슬롯 하나를 공유한다.
     // 상수 버퍼 오프셋을 지원하지 않으면 false를 반환하므로 호출 측은 기존 Draw 경로를 쓴다.
     bool BeginObjectConstants(uint32 Count);
-    void WriteObjectConstants(uint32 SlotIndex, const FObjectConstants& Constants, const FMaterial& Material);
+    void WriteObjectConstants(uint32 SlotIndex, const FObjectConstants& Constants);
     void EndObjectConstants();
     void DrawWithObjectConstants(uint32 SlotIndex, const FStaticMesh& InMesh, const FMaterial& InMaterial,
         int32 startidx, int32 indicesCount);
@@ -177,6 +178,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Buffer> b0ConstantBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> LightConstantBuffer;
+    // 머티리얼 없이 그리는 경로(라인)용 b3 기본값 (MaterialDiffuse = 흰색)
+    Microsoft::WRL::ComPtr<ID3D11Buffer> DefaultMaterialConstantBuffer;
 
     // 오브젝트 상수 링 버퍼. 슬롯 하나는 256바이트(상수 16개)로, VSSetConstantBuffers1 오프셋 단위와 같다.
     static constexpr UINT ObjectConstantSlotSize = 256u;
@@ -212,6 +215,9 @@ public:
     ) {
         UpdateConstantBuffer(Constants);
         BindConstantBuffer();
+        // 라인은 머티리얼 없이 그리므로 b3(MaterialDiffuse)에 흰색 기본값을 둔다.
+        // ResetRenderState로 머티리얼 캐시를 비우므로 다음 머티리얼 드로우가 b3를 다시 바인딩한다.
+        Context->PSSetConstantBuffers(3u, 1u, DefaultMaterialConstantBuffer.GetAddressOf());
         LineBatcher.Flush(*Context.Get(), GetPipeline(PipelineId));
         ResetRenderState();
     }
@@ -240,9 +246,8 @@ public:
         bool bConstantsInD3DClip = false
     )
     {
-        TConstants LocalConstants = Constants;
-        LocalConstants.MaterialDiffuse = InMaterial.GetDiffuseColor();
-        UpdateConstantBuffer(LocalConstants, bConstantsInD3DClip);
+        // 머티리얼 색(MaterialDiffuse)은 BindStateAndDraw의 머티리얼 바인딩이 b3로 넘긴다
+        UpdateConstantBuffer(Constants, bConstantsInD3DClip);
         if (Slot != 0u)
         {
             // b0 이외 슬롯 요청은 캐시 대상이 아니므로 매번 바인딩

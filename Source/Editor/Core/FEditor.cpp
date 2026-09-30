@@ -62,7 +62,7 @@ void FEditor::Process() {
   if (SceneManager && SceneManager->CurrentScene) {
     ZoneScopedN("Scene Update");
     // TODO(임시): 성능 측정용으로 씬 업데이트를 끔. 측정 후 되돌릴 것
-    // 꺼져 있는 동안 멈추는 기능 (Update를 실제로 구현한 곳은 아래 두 개뿐):
+    // 꺼져 있는 동안 멈추는 기능:
     //  - UStaticMeshComponent::Update: bIsMovingUV 컴포넌트의 마우스 휠 UV 스크롤
     //  - UAnimatedBillboardComp::Update: 스프라이트 시트 프레임 애니메이션 (프레임 진행·루프·UV 갱신)
     // SceneManager->CurrentScene->Update(FTimeManager::Get().GetDeltaTime());

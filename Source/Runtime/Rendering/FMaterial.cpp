@@ -72,4 +72,29 @@ void FMaterial::BindResources(ID3D11DeviceContext& Context) const
 
     // 픽셀 셰이더 슬롯에 한 번에 바인딩
     Context.PSSetShaderResources(0u, static_cast<UINT>(EMaterialTextureSlot::Count), SRVs);
+
+    // 머티리얼 상수(b3): 처음 바인딩할 때 만들고, 색이 바뀐 뒤 첫 바인딩에서만 갱신한다
+    if (bConstantBufferDirty)
+    {
+        const FMaterialConstants Constants{ DiffuseColor };
+        if (!ConstantBuffer)
+        {
+            Microsoft::WRL::ComPtr<ID3D11Device> Device;
+            Context.GetDevice(&Device);
+
+            const D3D11_BUFFER_DESC Desc = {
+                .ByteWidth = sizeof(FMaterialConstants),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+            };
+            const D3D11_SUBRESOURCE_DATA InitData = { .pSysMem = &Constants };
+            Device->CreateBuffer(&Desc, &InitData, &ConstantBuffer);
+        }
+        else
+        {
+            Context.UpdateSubresource(ConstantBuffer.Get(), 0, nullptr, &Constants, 0, 0);
+        }
+        bConstantBufferDirty = false;
+    }
+    Context.PSSetConstantBuffers(3u, 1u, ConstantBuffer.GetAddressOf());
 }

@@ -548,15 +548,17 @@ void FRenderView::FlushQueue(const FCamera& Camera)
         const uint32 OpaqueCount = static_cast<uint32>(OpaqueKeys.size());
 
         // 상수를 한 번에 올리고 드로우마다 슬롯 오프셋만 바인딩한다 (드로우마다 Map/Unmap 제거)
+        // 슬롯 = 컴포넌트(PrimitiveIndex): 업로드는 PrimitiveConstants를 순서대로 복사하고,
+        // 같은 컴포넌트의 섹션들은 슬롯 하나를 공유한다. 머티리얼 색은 b3(머티리얼 바인딩)로 간다.
         // 큐 항목의 Mesh·Material은 수집 단계에서 항상 유효하게 채워진다
-        if (Renderer.BeginObjectConstants(OpaqueCount))
+        const uint32 PrimitiveCount = static_cast<uint32>(PrimitiveConstants.size());
+        if (OpaqueCount > 0u && Renderer.BeginObjectConstants(PrimitiveCount))
         {
             {
                 ZoneScopedN("Upload Object Constants");
-                for (uint32 i = 0; i < OpaqueCount; ++i)
+                for (uint32 p = 0; p < PrimitiveCount; ++p)
                 {
-                    const FDrawItem& Item = OpaqueItems[OpaqueKeys[i].second];
-                    Renderer.WriteObjectConstants(i, PrimitiveConstants[Item.PrimitiveIndex], *Item.Material);
+                    Renderer.WriteObjectConstants(p, PrimitiveConstants[p]);
                 }
                 Renderer.EndObjectConstants();
             }
@@ -564,7 +566,7 @@ void FRenderView::FlushQueue(const FCamera& Camera)
             for (uint32 i = 0; i < OpaqueCount; ++i)
             {
                 const FDrawItem& Item = OpaqueItems[OpaqueKeys[i].second];
-                Renderer.DrawWithObjectConstants(i, *Item.Mesh, *Item.Material, Item.StartIndex, Item.IndexCount);
+                Renderer.DrawWithObjectConstants(Item.PrimitiveIndex, *Item.Mesh, *Item.Material, Item.StartIndex, Item.IndexCount);
             }
         }
         else

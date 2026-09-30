@@ -16,9 +16,15 @@ struct FObjectConstants {
   FMatrix World = FMatrix::GetIdentity();
   float DisableShading = 0.0f;
   FVector Padding;
-  FVector4 MaterialDiffuse{ 1.f, 1.f, 1.f, 1.f };
+  // MaterialDiffuse는 머티리얼 상수 버퍼(b3, FMaterialConstants)로 옮겼다
 };
 static_assert(sizeof(FObjectConstants) % 16 == 0);
+
+// b3에 바인딩. 머티리얼마다 하나씩 두고 머티리얼을 바인딩할 때 같이 바인딩한다.
+struct FMaterialConstants {
+  FVector4 MaterialDiffuse{ 1.f, 1.f, 1.f, 1.f };
+};
+static_assert(sizeof(FMaterialConstants) % 16 == 0);
 
 // b0에 바인딩
 struct FGridConstants {

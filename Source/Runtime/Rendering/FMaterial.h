@@ -8,6 +8,7 @@
 #include "Runtime/Core/TMap.h"
 #include "Vertices.h"
 #include <d3d11.h>
+#include <wrl/client.h>
 
 
 class FRenderer;
@@ -67,7 +68,10 @@ public:
       return BlendMode = Pipeline ? Pipeline->GetPipelineDesc().BlendMode : EBlendMode::Opaque;;
   }
 
-  void SetDiffuseColor(FVector4 InDiffuseColor) { DiffuseColor = InDiffuseColor; }
+  void SetDiffuseColor(FVector4 InDiffuseColor) {
+      DiffuseColor = InDiffuseColor;
+      bConstantBufferDirty = true;
+  }
   const FVector4 GetDiffuseColor() const { return DiffuseColor; };
 
   FString MaterialId;
@@ -81,6 +85,10 @@ private:
   TSharedPtr<FTexture> Textures[static_cast<size_t>(EMaterialTextureSlot::Count)];
 
   FVector4 DiffuseColor{ 1.f, 1.f, 1.f, 1.f };
+
+  // 머티리얼 상수 버퍼(b3, FMaterialConstants). BindResources에서 필요할 때 만들고 갱신한다.
+  mutable Microsoft::WRL::ComPtr<ID3D11Buffer> ConstantBuffer;
+  mutable bool bConstantBufferDirty = true;
 
   EBlendMode BlendMode = EBlendMode::None;
 };
