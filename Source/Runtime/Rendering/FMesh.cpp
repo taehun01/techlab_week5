@@ -131,6 +131,7 @@ void FStaticMesh::BuildMeshLodSummary()
 	if (Sections.size() <= 0)
 	{
 		MeshLodCount = 1;
+		return;
 	}
 	for (const auto& Section : Sections)
 	{

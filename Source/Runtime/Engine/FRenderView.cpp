@@ -66,7 +66,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
     FLodFrameParams LodFrameParams = MakeLodFrameParams(Renderer.GetViewportHeight(), Camera);
     FLodSelectSettings LodSetting = {};
-    //LodSetting.ForceLod = 2u;
     PrepareMeshLodDistance(LodFrameParams, LodSetting);
 
     // 2) 병렬 단계: 컴포넌트별 월드 행렬·카메라 거리를 계산한다.
@@ -686,9 +685,13 @@ uint8 FRenderView::SelectLod(const FStaticMesh* StaticMesh, float Scale, float D
         {
             LodSwitchDistance *= (1 + Setting.Hysteresis);
         }
+        if (CurrentLod == PrevLod)
+        {
+            LodSwitchDistance *= (1 - Setting.Hysteresis);
+        }
         if (Params.bIsOrthogonal)
         {
-            if (StaticMesh->GetSections()[0].LodErrors[CurrentLod] * Scale * Params.ProjScale > Setting.AllowedErrorPixels)
+            if (StaticMesh->GetMeshLodErrors()[CurrentLod] * Scale * Params.ProjScale <= Setting.AllowedErrorPixels)
             {
                 SelectedLod = static_cast<uint8>(CurrentLod);
                 break;

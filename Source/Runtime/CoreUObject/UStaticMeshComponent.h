@@ -36,7 +36,7 @@ public:
     virtual void Serialize(FArchive& Archive) const override;
     virtual void Deserialize(const FArchive& Archive) override;
 
-    virtual FStaticMesh* GetFStaticMesh() const override { return StaticMesh ? StaticMesh->GetStaticMeshAsset().get() : nullptr; } 
+    virtual FStaticMesh* GetFStaticMesh() const override { return StaticMesh ? StaticMesh->StaticMeshAsset.get() : nullptr; }
 
 protected:
     UStaticMeshComponent() = default;

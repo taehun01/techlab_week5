@@ -2,8 +2,8 @@
 
 struct FLodSelectSettings
 {
-	float AllowedErrorPixels = 1.0f;
-	float Hysteresis = 0.1f;
+	float AllowedErrorPixels = 10.0f;
+	float Hysteresis = 0.2f;
 	int32 ForceLod = -1;
 	bool bDebugTintByLod = false;
 };

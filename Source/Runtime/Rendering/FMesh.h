@@ -71,9 +71,9 @@ public:
 	[[nodiscard]] bool HasTexture() const { return !DefaultTextureId.empty() && DefaultTextureId != "None"; }
 	[[nodiscard]] bool HasNormalMap() const { return !DefaultNormalTextureId.IsNone() && DefaultNormalTextureId != FName("None"); }
 	[[nodiscard]] bool HasSpecularMap() const { return !DefaultSpecularTextureId.IsNone() && DefaultSpecularTextureId != FName("None"); }
-	[[nodiscard]] uint32 GetVertexBufferSize() { return VertexBufferSize; }
-	[[nodiscard]] uint32 GetIndexBufferSize() { return IndexBufferSize; }
-	[[nodiscard]] float* GetMeshLodErrors() { return MeshLodErrors; }
+	[[nodiscard]] const uint32 GetVertexBufferSize() const { return VertexBufferSize; }
+	[[nodiscard]] const uint32 GetIndexBufferSize() const { return IndexBufferSize; }
+	[[nodiscard]] const float* GetMeshLodErrors() const { return MeshLodErrors; }
 	[[nodiscard]] uint32 GetMeshLodCount() const { return MeshLodCount; }
 	void SetMeshLodCount(uint32 InCount) { MeshLodCount = InCount; }
 
