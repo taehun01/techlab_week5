@@ -147,14 +147,14 @@ void FEditorApplication::Tick(float DeltaTime) {
 #else
     {
         ZoneScopedN("UI Windows");
-        //ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
+        ToolBar.Process(Editor, ConsoleWindow, ControlPanelWindow, PropertyWindow);
         EditorViewportWindow.Process(Editor, DeltaTime);
         //WorldOutliner.Process(Editor);
         ControlPanelWindow.Process(Editor);
         //PropertyWindow.Process(Editor);
         ConsoleWindow.Process(Editor);
         //ContentsDrawer.Process(Editor);
-        OverlayStat.Process(Editor, DeltaTime);
+        OverlayStat.Process(Editor);
         STATS.Reset();
 
         for (const auto& Window : PreviewWindows)

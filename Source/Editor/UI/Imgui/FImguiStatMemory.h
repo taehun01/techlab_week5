@@ -30,7 +30,7 @@ struct FImguiStatMemory final
 	inline static uint32 EditorTextureMemory;
 	inline static uint32 ThumbnailTextureMemory;
 
-	const void Process(const FEditor InEditor) const
+	const void Process(const FEditor& InEditor) const
 	{
 		const ImGuiViewport* VP = ImGui::GetMainViewport();
 		ImGui::SetNextWindowPos(ImVec2(60.f, 80.f));

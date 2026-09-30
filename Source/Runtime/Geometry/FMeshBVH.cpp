@@ -7,7 +7,7 @@
 namespace
 {
 	constexpr int32 MaxStackSize = 64;
-
+	//AABB 박스가 점 하나를 포함하도록 박스를 넓히는 함수
 	void Expand(FAxisAlignedBoundingBox& Box, const FVector& Point)
 	{
 		Box.Min = FVector((std::min)(Box.Min.X, Point.X), (std::min)(Box.Min.Y, Point.Y), (std::min)(Box.Min.Z, Point.Z));
@@ -300,16 +300,9 @@ void FMeshBVH::Subdivide(int32 NodeIndex, int32 Depth)
 		return;
 	}
 
-	// Median split: 중심점 기준 중앙값으로 절반씩 나눈다.
-	const int32 Mid = First + Count / 2;
-	std::nth_element(
-		Triangles.begin() + First,
-		Triangles.begin() + Mid,
-		Triangles.begin() + First + Count,
-		[Axis](const FTriangle& L, const FTriangle& R)
-		{
-			return (L.A[Axis] + L.B[Axis] + L.C[Axis]) < (R.A[Axis] + R.B[Axis] + R.C[Axis]);
-		});
+	const int32 Mid = Settings.bUseSAH
+		? SplitSAH(First, Count, Axis)
+		: SplitMedian(First, Count, Axis);
 
 	const int32 LeftIndex = static_cast<int32>(Nodes.size());
 
@@ -334,6 +327,62 @@ void FMeshBVH::Subdivide(int32 NodeIndex, int32 Depth)
 	Subdivide(LeftIndex + 1, Depth + 1);
 }
 
+int32 FMeshBVH::SplitMedian(int32 First, int32 Count, int32 Axis)
+{
+	// Median split: 중심점 기준 중앙값으로 절반씩 나눈다.
+	const int32 Mid = First + Count / 2;
+	std::nth_element(
+		Triangles.begin() + First,
+		Triangles.begin() + Mid,
+		Triangles.begin() + First + Count,
+		[Axis](const FTriangle& L, const FTriangle& R)
+		{
+			return (L.A[Axis] + L.B[Axis] + L.C[Axis]) < (R.A[Axis] + R.B[Axis] + R.C[Axis]);
+		});
+	return Mid;
+}
+
+int32 FMeshBVH::SplitSAH(int32 First, int32 Count, int32 Axis)
+{
+	// SAH: 왼쪽 AABB 표면적 * 개수 + 오른쪽 AABB 표면적 * 개수가 가장 작은 분할점을 고른다.
+	// 
+	// 고른 Axis 기준으로 중심점 순 정렬
+	std::sort(Triangles.begin() + First, Triangles.begin() + First + Count,
+		[Axis](const FTriangle& L, const FTriangle& R)
+		{
+			return (L.A[Axis] + L.B[Axis] + L.C[Axis]) < (R.A[Axis] + R.B[Axis] + R.C[Axis]);
+		});
+
+	// 오른쪽에서 왼쪽으로 스윕: RightArea[I] = [First + I, End) 박스 표면적
+	TArray<float> RightArea(Count);
+	FAxisAlignedBoundingBox RightBox;
+	for (int32 I = Count - 1; I > 0; --I)
+	{
+		const FTriangle& T = Triangles[First + I];
+		Expand(RightBox, T.A); Expand(RightBox, T.B); Expand(RightBox, T.C);
+		RightArea[I] = SurfaceArea(RightBox);
+	}
+
+	// 왼쪽에서 오른쪽으로 스윕하면서 비용 비교
+	float BestCost = std::numeric_limits<float>::max();
+	int32 BestSplit = First + Count / 2;
+	FAxisAlignedBoundingBox LeftBox;
+	for (int32 I = 1; I < Count; ++I) // I = 왼쪽 개수, 양쪽 최소 1개
+	{
+		const FTriangle& T = Triangles[First + I - 1];
+		Expand(LeftBox, T.A); Expand(LeftBox, T.B); Expand(LeftBox, T.C);
+
+		const float Cost = SurfaceArea(LeftBox) * I + RightArea[I] * (Count - I);
+		if (Cost < BestCost)
+		{
+			BestCost = Cost;
+			BestSplit = First + I;
+		}
+	}
+	return BestSplit;
+}
+
+//삼각형 A, B, C를 전부 Expand해서 범위 전체를 감싸는 박스를 만듭니다.
 FAxisAlignedBoundingBox FMeshBVH::ComputeBounds(int32 First, int32 Count) const
 {
 	FAxisAlignedBoundingBox Bounds;
@@ -344,4 +393,10 @@ FAxisAlignedBoundingBox FMeshBVH::ComputeBounds(int32 First, int32 Count) const
 		Expand(Bounds, Triangles[I].C);
 	}
 	return Bounds;
+}
+
+float FMeshBVH::SurfaceArea(const FAxisAlignedBoundingBox& Box)
+{
+	const FVector E = Box.Max - Box.Min;
+	return 2.0f * (E.X * E.Y + E.Y * E.Z + E.Z * E.X);
 }

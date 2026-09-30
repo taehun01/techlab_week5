@@ -10,6 +10,7 @@ struct FMeshBVHSettings
 {
 	int32 MaxTrianglesPerLeaf = 4;
 	int32 MaxDepth = 32;
+	bool bUseSAH = false; // false면 Median split
 };
 
 struct FMeshBVHRayHit
@@ -54,5 +55,9 @@ private:
 	TArray<FTriangle> Triangles; // 리프 순서대로 재배치됨
 
 	void Subdivide(int32 NodeIndex, int32 Depth);
+	// 분할 후 [First, 반환값)이 왼쪽, [반환값, First + Count)가 오른쪽이 되도록 Triangles를 재배치한다.
+	int32 SplitMedian(int32 First, int32 Count, int32 Axis);
+	int32 SplitSAH(int32 First, int32 Count, int32 Axis);
 	FAxisAlignedBoundingBox ComputeBounds(int32 First, int32 Count) const;
+	static float SurfaceArea(const FAxisAlignedBoundingBox& Box);
 };
