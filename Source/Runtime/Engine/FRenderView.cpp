@@ -522,9 +522,40 @@ void FRenderView::FlushQueue(const FCamera& Camera)
     {
         ZoneScopedN("Opaque");
         TracyD3D11Zone(Renderer.GetGpuProfiler(), "Opaque");
-        for (const auto& [SortKey, Index] : RenderQueue.GetOpaqueSortKeys())
+        const auto& OpaqueKeys = RenderQueue.GetOpaqueSortKeys();
+        const TArray<FRenderData>& OpaqueQ = RenderQueue.GetOpaqueRenderQ();
+        const uint32 OpaqueCount = static_cast<uint32>(OpaqueKeys.size());
+
+        // 상수를 한 번에 올리고 드로우마다 슬롯 오프셋만 바인딩한다 (드로우마다 Map/Unmap 제거)
+        if (Renderer.BeginObjectConstants(OpaqueCount))
         {
-            DrawRenderData(RenderQueue.GetOpaqueRenderQ()[Index]);
+            {
+                ZoneScopedN("Upload Object Constants");
+                for (uint32 i = 0; i < OpaqueCount; ++i)
+                {
+                    const FRenderData& Data = OpaqueQ[OpaqueKeys[i].second];
+                    if (Data.MaterialPtr)
+                    {
+                        Renderer.WriteObjectConstants(i, Data.Constants, *Data.MaterialPtr);
+                    }
+                }
+                Renderer.EndObjectConstants();
+            }
+
+            // 수집 단계에서 MeshPtr/MaterialPtr를 채워 두므로 여기서는 포인터만 쓴다
+            for (uint32 i = 0; i < OpaqueCount; ++i)
+            {
+                const FRenderData& Data = OpaqueQ[OpaqueKeys[i].second];
+                if (!Data.MeshPtr || !Data.MaterialPtr) continue;
+                Renderer.DrawWithObjectConstants(i, *Data.MeshPtr, *Data.MaterialPtr, Data.startidx, Data.indicesCount);
+            }
+        }
+        else
+        {
+            for (const auto& [SortKey, Index] : OpaqueKeys)
+            {
+                DrawRenderData(OpaqueQ[Index]);
+            }
         }
     }
 

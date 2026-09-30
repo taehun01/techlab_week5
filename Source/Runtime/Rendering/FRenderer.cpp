@@ -18,6 +18,7 @@
 #include "Runtime/CoreUObject/UStaticMesh.h"
 #include "Editor/Grid/FGrid.h"
 #include <Windows.h>
+#include <algorithm>
 #include <cmath>
 #include <d3d11.h>
 #include <d3dcompiler.h>
@@ -55,6 +56,9 @@ void FRenderer::Shutdown() {
 
   b0ConstantBuffer.Reset();
   FrameConstantBuffer.Reset();
+  ObjectConstantRing.Reset();
+  ObjectConstantRingCapacity = 0u;
+  Context1.Reset();
 
   BackBufferRTV.Reset();
   DepthStencilView.Reset();
@@ -105,6 +109,113 @@ void FRenderer::SetViewportUV(FVector2 TopLeftUV, FVector2 LengthUV) {
   Context->VSSetConstantBuffers(1, 1, FrameConstantBuffer.GetAddressOf());
   Context->PSSetConstantBuffers(1, 1, FrameConstantBuffer.GetAddressOf());
 };
+
+bool FRenderer::BeginObjectConstants(uint32 Count) {
+  if (!bSupportsConstantBufferOffset || Count == 0u) {
+    return false;
+  }
+
+  // 용량이 모자라면 2의 거듭제곱으로 키워 다시 만든다 (프레임마다 재생성하지 않도록)
+  if (Count > ObjectConstantRingCapacity) {
+    uint32 NewCapacity = (std::max)(ObjectConstantRingCapacity, 1024u);
+    while (NewCapacity < Count) {
+      NewCapacity *= 2u;
+    }
+
+    D3D11_BUFFER_DESC Desc = {
+        .ByteWidth = NewCapacity * ObjectConstantSlotSize,
+        .Usage = D3D11_USAGE_DYNAMIC,
+        .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+        .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+    };
+    ObjectConstantRing.Reset();
+    ObjectConstantRingCapacity = 0u;
+    if (FAILED(Device->CreateBuffer(&Desc, nullptr, &ObjectConstantRing))) {
+      return false;
+    }
+    ObjectConstantRingCapacity = NewCapacity;
+  }
+
+  D3D11_MAPPED_SUBRESOURCE Mapped{};
+  if (FAILED(Context->Map(ObjectConstantRing.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &Mapped))) {
+    return false;
+  }
+  MappedObjectConstants = static_cast<uint8*>(Mapped.pData);
+  return true;
+}
+
+void FRenderer::WriteObjectConstants(uint32 SlotIndex, const FObjectConstants& Constants, const FMaterial& Material) {
+  FObjectConstants* Dst = reinterpret_cast<FObjectConstants*>(
+      MappedObjectConstants + static_cast<size_t>(SlotIndex) * ObjectConstantSlotSize);
+  *Dst = Constants;
+  Dst->MaterialDiffuse = Material.GetDiffuseColor();
+}
+
+void FRenderer::EndObjectConstants() {
+  Context->Unmap(ObjectConstantRing.Get(), 0);
+  MappedObjectConstants = nullptr;
+}
+
+void FRenderer::DrawWithObjectConstants(uint32 SlotIndex, const FStaticMesh& InMesh, const FMaterial& InMaterial,
+                                        int32 startidx, int32 indicesCount) {
+  // 오프셋·개수 단위는 상수(16바이트) 1개
+  constexpr UINT NumConstants = ObjectConstantSlotSize / 16u;
+  const UINT FirstConstant = SlotIndex * NumConstants;
+  ID3D11Buffer* Ring = ObjectConstantRing.Get();
+  Context1->VSSetConstantBuffers1(0, 1, &Ring, &FirstConstant, &NumConstants);
+  Context1->PSSetConstantBuffers1(0, 1, &Ring, &FirstConstant, &NumConstants);
+  // b0 슬롯이 링 버퍼를 가리키므로 이후 일반 Draw는 b0ConstantBuffer를 다시 바인딩해야 한다
+  CurrentRenderState.bIsConstantBufferBind = false;
+
+  BindStateAndDraw(InMesh, InMaterial, startidx, indicesCount, true);
+}
+
+void FRenderer::BindStateAndDraw(const FStaticMesh& InMesh, const FMaterial& InMaterial,
+                                 int32 startidx, int32 indicesCount, bool bApplyViewMode) {
+  FRenderPipeline* Pipeline = InMaterial.Pipeline.get();
+  if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe)
+  {
+      Pipeline = GetPipeline(FName("Simple_Wireframe")).get();
+  }
+  // 파이프라인 또는 StencilRef가 바뀐 경우에만 재바인딩
+  if (Pipeline &&
+      (Pipeline != CurrentRenderState.Pipeline || Pipeline->GetStencilRef() != CurrentRenderState.StencilRef))
+  {
+      Pipeline->Bind(*Context.Get());
+      CurrentRenderState.Pipeline = Pipeline;
+      CurrentRenderState.StencilRef = Pipeline->GetStencilRef();
+  }
+
+  if (CurrentRenderState.Material != &InMaterial)
+  {
+      CurrentRenderState.Material = &InMaterial;
+      CurrentRenderState.Material->BindResources(*Context.Get());
+  }
+  if (CurrentRenderState.Mesh != &InMesh)
+  {
+      CurrentRenderState.Mesh = &InMesh;
+      CurrentRenderState.Mesh->BindResources(*Context.Get());
+  }
+
+  STATS.UpdateDrawCallCount(indicesCount > 0 ? indicesCount : InMesh.GetIndexCount(), InMesh.GetVertexCount());
+
+  // 외부에서 indicesCount를 양수로 지정한 경우 해당 섹션 범위만 1회 드로우
+  if (indicesCount > 0)
+  {
+      Context->DrawIndexed(static_cast<UINT>(indicesCount), static_cast<UINT>(startidx), 0);
+      return;
+  }
+
+  // 전체를 그리도록 요청받은 경우 (-1)
+  if (InMesh.HasIndices())
+  {
+      Context->DrawIndexed(InMesh.GetIndexCount(), 0, 0);
+  }
+  else
+  {
+      Context->Draw(InMesh.VertexCount, static_cast<UINT>(startidx));
+  }
+}
 
 void FRenderer::ClearDepth() {
   Context->ClearDepthStencilView(
@@ -516,6 +627,13 @@ bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
   Microsoft::WRL::ComPtr<IDXGIDevice1> DxgiDevice;
   if (SUCCEEDED(Device.As(&DxgiDevice))) {
       DxgiDevice->SetMaximumFrameLatency(1);
+  }
+
+  // 상수 버퍼 오프셋 바인딩(VSSetConstantBuffers1) 지원 여부. 없으면 드로우마다 Map하는 기존 경로를 쓴다.
+  D3D11_FEATURE_DATA_D3D11_OPTIONS Options{};
+  if (SUCCEEDED(Context.As(&Context1)) &&
+      SUCCEEDED(Device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &Options, sizeof(Options)))) {
+      bSupportsConstantBufferOffset = Options.ConstantBufferOffsetting == TRUE;
   }
 
   RECT ClientRect{};

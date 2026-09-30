@@ -23,7 +23,9 @@ void FEditorViewport::UpdateViewAndCtx(FLightConstants GlobalLight, AActor* Sele
     editorCtx.SelectedTransform = Transform;
     editorCtx.Gizmo = Gizmo;
     editorCtx.TextComp = Textcomp;
-    editorCtx.Grid = &Grid;
+    // 그리드 끔: Grid가 nullptr이면 FRenderView가 그리드를 그리지 않는다
+    //editorCtx.Grid = &Grid;
+    editorCtx.Grid = nullptr;
     editorCtx.VisualizerRegistry = Visual;
 
 

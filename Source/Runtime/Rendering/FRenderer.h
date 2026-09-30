@@ -16,6 +16,7 @@
 
 #include <Windows.h>
 #include <d3d11.h>
+#include <d3d11_1.h>
 #include <filesystem>
 #include <wrl/client.h>
 #include "ThirdParty/tracy/tracy/Tracy.hpp"
@@ -144,6 +145,15 @@ public:
 
     float GetViewportHeight() { return Viewport.Height; }
 
+    // 오브젝트 상수 일괄 업로드: 드로우마다 b0를 Map/Unmap하는 대신
+    // 큰 링 버퍼를 한 번만 Map해 Count개 슬롯을 채우고, 드로우 때는 슬롯 오프셋만 바인딩한다.
+    // 상수 버퍼 오프셋을 지원하지 않으면 false를 반환하므로 호출 측은 기존 Draw 경로를 쓴다.
+    bool BeginObjectConstants(uint32 Count);
+    void WriteObjectConstants(uint32 SlotIndex, const FObjectConstants& Constants, const FMaterial& Material);
+    void EndObjectConstants();
+    void DrawWithObjectConstants(uint32 SlotIndex, const FStaticMesh& InMesh, const FMaterial& InMaterial,
+        int32 startidx, int32 indicesCount);
+
 private:
     bool InitializeDeviceAndSwapChain(HWND Window);
     bool InitializeBackBufferAndDepthStencil();
@@ -165,6 +175,19 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Buffer> b0ConstantBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> LightConstantBuffer;
+
+    // 오브젝트 상수 링 버퍼. 슬롯 하나는 256바이트(상수 16개)로, VSSetConstantBuffers1 오프셋 단위와 같다.
+    static constexpr UINT ObjectConstantSlotSize = 256u;
+    static_assert(sizeof(FObjectConstants) <= ObjectConstantSlotSize);
+    Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context1;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> ObjectConstantRing;
+    uint32 ObjectConstantRingCapacity = 0u;
+    uint8* MappedObjectConstants = nullptr;
+    bool bSupportsConstantBufferOffset = false;
+
+    // 파이프라인·머티리얼·메시를 (바뀐 경우에만) 바인딩하고 드로우한다. b0 바인딩은 호출 측 책임.
+    void BindStateAndDraw(const FStaticMesh& InMesh, const FMaterial& InMaterial,
+        int32 startidx, int32 indicesCount, bool bApplyViewMode);
 
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> EditorViewPortRTV;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> EditorViewPortSRV;
@@ -229,50 +252,7 @@ public:
             CurrentRenderState.bIsConstantBufferBind = true;
         }
 
-        FRenderPipeline* Pipeline = InMaterial.Pipeline.get();
-        if (bApplyViewMode && CurrentRenderMode == EViewModeIndex::VMI_Wireframe)
-        {
-            Pipeline = GetPipeline(FName("Simple_Wireframe")).get();
-        }
-        // 파이프라인 또는 StencilRef가 바뀐 경우에만 재바인딩
-        if (Pipeline &&
-            (Pipeline != CurrentRenderState.Pipeline || Pipeline->GetStencilRef() != CurrentRenderState.StencilRef))
-        {
-            Pipeline->Bind(*Context.Get());
-            CurrentRenderState.Pipeline = Pipeline;
-            CurrentRenderState.StencilRef = Pipeline->GetStencilRef();
-        }
-
-        if (CurrentRenderState.Material != &InMaterial)
-        {
-            CurrentRenderState.Material = &InMaterial;
-            CurrentRenderState.Material->BindResources(*Context.Get());
-        }
-        if (CurrentRenderState.Mesh != &InMesh)
-        {
-            CurrentRenderState.Mesh = &InMesh;
-            CurrentRenderState.Mesh->BindResources(*Context.Get());
-        }
-
-        
-        STATS.UpdateDrawCallCount(indicesCount > 0 ? indicesCount : InMesh.GetIndexCount(), InMesh.GetVertexCount());
-
-        // 외부에서 indicesCount를 양수로 지정한 경우 해당 섹션 범위만 1회 드로우
-        if (indicesCount > 0)
-        {
-            Context->DrawIndexed(static_cast<UINT>(indicesCount), static_cast<UINT>(startidx), 0);
-            return;
-        }
-
-        // 전체를 그리도록 요청받은 경우 (-1)
-        if (InMesh.HasIndices())
-        {
-            Context->DrawIndexed(InMesh.GetIndexCount(), 0, 0);
-        }
-        else
-        {
-            Context->Draw(InMesh.VertexCount, static_cast<UINT>(startidx));
-        }
+        BindStateAndDraw(InMesh, InMaterial, startidx, indicesCount, bApplyViewMode);
     }
 
 private:
