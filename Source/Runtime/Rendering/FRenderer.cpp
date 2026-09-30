@@ -946,7 +946,8 @@ void FRenderer::DrawTextInstances(const FCamera &Camera, const FName &MeshId,
   UpdateConstantBuffer(SC);
   BindConstantBuffer();
 
-  TArray<FInstanceData> InstanceData =
+  // 참조로 받는다 (값으로 받으면 인스턴스 배열 전체가 매번 복사된다)
+  const TArray<FInstanceData>& InstanceData =
       FRenderResourceLibrary::Get().GetInstancingArray(MaterialId, MeshId);
 
   if (InstanceData.empty())

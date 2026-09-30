@@ -361,7 +361,7 @@ void FRenderView::RenderOverlayPass(const FCamera& Camera, const FSceneView& Sce
     if (TextComp && (SceneView.ShowFlags & static_cast<uint64>(EEngineShowFlags::SF_BillboardText)))
     {
         Renderer.ClearDepth();
-        FRenderData Data = TextComp->GetPureRenderData();
+        const FRenderData& Data = TextComp->GetPureRenderData();
         if (!Data.Instances.empty())
         {
             Renderer.AddTextInstanceArray(Data.Instances, Data.MeshId, Data.MaterialId);
@@ -438,7 +438,7 @@ void FRenderView::RenderUUIDText(const FCamera& Camera, FVector2 TopLeftUV,
     Renderer.ClearDepth();
 
     // BuildRenderData()로 Font 기반 인스턴스 데이터 획득 후 드로우
-    FRenderData Data = textcomp->GetPureRenderData();
+    const FRenderData& Data = textcomp->GetPureRenderData();
     if (!Data.Instances.empty())
     {
         Renderer.AddTextInstanceArray(Data.Instances, Data.MeshId, Data.MaterialId);
