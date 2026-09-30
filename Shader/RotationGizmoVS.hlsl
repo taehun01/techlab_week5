@@ -20,6 +20,9 @@ PS_INPUT main(VS_INPUT Input)
 {
     PS_INPUT Output;
 
+    // b0에서 MVP가 빠졌으므로 World와 b1의 ViewProj로 만든다
+    const float4x4 MVP = mul(World, ViewProj);
+
     const float Side = Input.Color.r;
     float2 Radial = normalize(Input.Position.yz);
 

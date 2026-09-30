@@ -33,11 +33,13 @@ void FGizmo::Draw(FRenderer& Renderer, const FTransform& Transform, const FCamer
 	FMatrix Scale = FMatrix::MakeScale(FVector{ GizmoScale, GizmoScale, GizmoScale });
 	FMatrix ObjectRotation = GetSpace() == EGizmoSpace::World ? FMatrix::GetIdentity() : Transform.Rotation.ToMatrixRow();
 	FMatrix Translation = FMatrix::MakeTranslation(Transform.Location);
-	FMatrix VP = Camera.CreateViewProjectionMatrix();
-	 
-	DrawAxis(Renderer, EGizmoHandle::XAxis, Scale * ObjectRotation * Translation * VP);
-	DrawAxis(Renderer, EGizmoHandle::YAxis, Scale * YAxisRotation * ObjectRotation * Translation * VP);
-	DrawAxis(Renderer, EGizmoHandle::ZAxis, Scale * ZAxisRotation * ObjectRotation * Translation * VP);
+
+	// 셰이더가 World와 b1의 ViewProj로 화면 위치를 구하므로 카메라 행렬은 b1에만 둔다
+	Renderer.SetViewProjection(Camera.CreateViewProjectionMatrix());
+
+	DrawAxis(Renderer, EGizmoHandle::XAxis, Scale * ObjectRotation * Translation);
+	DrawAxis(Renderer, EGizmoHandle::YAxis, Scale * YAxisRotation * ObjectRotation * Translation);
+	DrawAxis(Renderer, EGizmoHandle::ZAxis, Scale * ZAxisRotation * ObjectRotation * Translation);
 }
 
 EGizmoHandle FGizmo::HitTest(const FTransform& Transform, const FRay& Ray, const FCamera& Camera) const
@@ -207,7 +209,7 @@ void FGizmo::EndInteraction()
 	ActiveHandle = EGizmoHandle::None;
 }
 
-void FGizmo::DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& MVP) const
+void FGizmo::DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& World) const
 {
 	constexpr FVector Color[3] = {
 		FVector{ 0.8f, 0.0f, 0.0f },
@@ -251,7 +253,7 @@ void FGizmo::DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& M
 	}
 
 	FObjectConstants Constants{};
-	Constants.MVP = MVP;
+	Constants.World = World;
 	Constants.ColorOverride = DrawColor;
 	Constants.ColorOverrideAmount = 1.0f;
 	Constants.DisableShading = 1.0f;

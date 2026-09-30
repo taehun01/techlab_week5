@@ -56,9 +56,8 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     auto& ResLib = FRenderResourceLibrary::Get();
     const FCamera& Camera = *View.Camera;
 
-    // D3D 클립 변환을 ViewProj에 한 번만 곱해 둔다. 오브젝트마다 MVP에 곱하던 것과 결과는 같다.
-    // 이렇게 만든 MVP는 FlushQueue에서 bConstantsInD3DClip=true로 그린다.
-    const FMatrix ViewProjD3D = View.ViewProj * FRenderer::GetUnrealClipToD3DClip();
+    // MVP는 만들지 않는다: 셰이더가 World와 b1의 ViewProj(RenderView에서 설정)로 계산한다.
+    // 그래서 오브젝트 상수는 카메라와 무관하다.
 
     // 1) 후보: 프러스텀 컬링 없이 씬의 모든 렌더 컴포넌트를 그린다 (화면 밖은 GPU 클리핑에 맡김).
     //    실험: 전부 보이는 씬에서는 컬링 비용(옥트리 질의 + 오브젝트별 AABB/프러스텀 검사)이 순수 손해라서 뺐다.
@@ -177,9 +176,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
         if (DrawItems.empty() && RenderDatas.empty()) continue;
 
-        // 공통 Matrix 및 Color 계산 (컴포넌트당 1회)
-        const FMatrix MVP = World * ViewProjD3D;
-
+        // 공통 Color 계산 (컴포넌트당 1회)
         FVector FinalColorOverride = MeshComponent->GetColor();
         float   FinalColorOverrideAmount = MeshComponent->GetColorAmount();
 
@@ -198,7 +195,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             // 섹션들이 공유하는 상수를 한 번만 저장한다 (UVScale 등 나머지는 기본값)
             uint32 PrimitiveIndex = 0u;
             FObjectConstants& Constants = RenderQueue.AddPrimitive(PrimitiveIndex);
-            Constants.MVP = MVP;
             Constants.World = World;
             Constants.ColorOverride = FinalColorOverride;
             Constants.ColorOverrideAmount = FinalColorOverrideAmount;
@@ -234,7 +230,6 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             uint32 PrimitiveIndex = 0u;
             FObjectConstants& Constants = RenderQueue.AddPrimitive(PrimitiveIndex);
             Constants = Data.Constants;
-            Constants.MVP = MVP;
             Constants.World = World;
             Constants.ColorOverride = FinalColorOverride;
             Constants.ColorOverrideAmount = FinalColorOverrideAmount;
@@ -252,6 +247,8 @@ void FRenderView::RenderView(const FSceneView& View, const UScene& Scene, const 
 
     // 뷰포트 시작
     BeginView(View.TopLeftUV, View.LengthUV, View.ViewMode, View.LightConstants);
+    // 이 뷰의 카메라 행렬을 b1에 둔다 (오브젝트 상수에는 카메라 값이 없다)
+    Renderer.SetViewProjection(View.ViewProj);
 
     // 씬 컴포넌트 수집
     CollectScenePrimitives(Scene, View, EditorCtx.SelectedActor);
@@ -470,10 +467,10 @@ void FRenderView::DrawStencilMask(const FCamera& Camera,
     auto Mesh = FRenderResourceLibrary::Get().GetMesh(RD.MeshId);
     if (!Mesh) return;
 
-    const FMatrix ModelMatrix = MeshComp->GetRenderMatrix(Camera);
+    // 화면 위치는 셰이더가 World와 b1의 ViewProj로 계산한다
+    Renderer.SetViewProjection(Camera.CreateViewProjectionMatrix());
     FObjectConstants Constants{};
-    Constants.World = ModelMatrix;
-    Constants.MVP   = Constants.World * Camera.CreateViewProjectionMatrix();
+    Constants.World = MeshComp->GetRenderMatrix(Camera);
     Constants.DisableShading = 1.0f;
 
     auto OutlineMaterial = FRenderResourceLibrary::Get().GetMaterial(FName("Outline"));
@@ -516,8 +513,9 @@ void FRenderView::ClearTextInstances()
 
 void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& PipelineId)
 {
+    // 라인 정점은 월드 좌표라 World는 단위 행렬(기본값), 카메라 행렬은 b1로 넘긴다
+    Renderer.SetViewProjection(ViewProjection);
     FObjectConstants Constants{};
-    Constants.MVP = ViewProjection;
     Constants.DisableShading = 1.0f;
     Renderer.FlushLineBatch(Constants, PipelineId);
 }
@@ -525,7 +523,7 @@ void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& Pip
 void FRenderView::DrawItem(const FDrawItem& Item)
 {
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
-    // 큐의 MVP는 CollectScenePrimitives에서 이미 D3D 클립 좌표계로 만들었다
+    // 화면 위치는 셰이더가 World와 b1의 ViewProj(RenderView에서 설정)로 계산한다
     Renderer.Draw(*Item.Mesh, *Item.Material, RenderQueue.GetPrimitiveConstants()[Item.PrimitiveIndex],
         Item.StartIndex, Item.IndexCount,
         /*Slot*/ 0u, /*bApplyViewMode*/ true, /*bConstantsInD3DClip*/ true);

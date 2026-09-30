@@ -103,13 +103,25 @@ void FRenderer::SetViewportUV(FVector2 TopLeftUV, FVector2 LengthUV) {
   RenderViewport.Height = LengthUV.Y * Viewport.Height;
   Context->RSSetViewports(1, &RenderViewport);
 
-  FFrameConstants Constants{
-      FVector2{RenderViewport.Width, RenderViewport.Height}};
-  Context->UpdateSubresource(FrameConstantBuffer.Get(), 0, nullptr, &Constants,
+  // ViewProj는 유지하고 뷰포트 크기만 바꿔 올린다
+  FrameConstants.ViewportSize = FVector2{RenderViewport.Width, RenderViewport.Height};
+  UploadFrameConstants();
+};
+
+void FRenderer::SetViewProjection(const FMatrix& ViewProj) {
+  // 셰이더는 mul(mul(pos, World), ViewProj)로 화면 위치를 구한다.
+  // D3D 클립 변환은 여기서 한 번만 곱해 둔다 (오브젝트마다 MVP를 만들던 것과 결과는 같다).
+  CurrentViewProjection = ViewProj;
+  FrameConstants.ViewProj = ViewProj * GetUnrealClipToD3DClip();
+  UploadFrameConstants();
+}
+
+void FRenderer::UploadFrameConstants() {
+  Context->UpdateSubresource(FrameConstantBuffer.Get(), 0, nullptr, &FrameConstants,
                              0, 0);
   Context->VSSetConstantBuffers(1, 1, FrameConstantBuffer.GetAddressOf());
   Context->PSSetConstantBuffers(1, 1, FrameConstantBuffer.GetAddressOf());
-};
+}
 
 bool FRenderer::BeginObjectConstants(uint32 Count) {
   if (!bSupportsConstantBufferOffset || Count == 0u) {
@@ -874,8 +886,9 @@ void FRenderer::AddTextInstanceArray(const TArray<FInstanceData> &Instances,
 void FRenderer::DrawInstances(const FCamera &Camera) {
   auto &ResLib = FRenderResourceLibrary::Get();
 
+  // InstanceVS는 인스턴스 World와 b1의 ViewProj로 화면 위치를 구한다
+  SetViewProjection(Camera.CreateViewProjectionMatrix());
   FObjectConstants SC{};
-  SC.MVP = Camera.CreateViewProjectionMatrix();
 
   // 배치 키(MaterialID, MeshID) 순회
   for (const auto &[BatchKey, InstanceData] : ResLib.AllInstancingArrayMap) {
@@ -953,9 +966,9 @@ void FRenderer::DrawTextInstances(const FCamera &Camera, const FName &MeshId,
   ResetRenderState();
   auto &ResLib = FRenderResourceLibrary::Get();
 
-  // 상수 버퍼 업데이트
+  // 상수 버퍼 업데이트 (InstanceVS는 b1의 ViewProj를 쓴다)
+  SetViewProjection(Camera.CreateViewProjectionMatrix());
   FObjectConstants SC{};
-  SC.MVP = Camera.CreateViewProjectionMatrix();
   UpdateConstantBuffer(SC);
   BindConstantBuffer();
 
@@ -1133,9 +1146,12 @@ void FRenderer::RenderMeshPreviewScene(FPreviewRenderTarget& RenderTarget, const
   
   auto& Sections = MeshAsset->GetSections();
 
+  // 프리뷰 카메라로 b1 ViewProj를 바꾸고, 끝나면 에디터 뷰의 값으로 되돌린다
+  const FMatrix PrevViewProjection = CurrentViewProjection;
+  SetViewProjection(Camera.CreateViewProjectionMatrix());
+
   FObjectConstants ObjConstants = {};
   ObjConstants.World = FMatrix::GetIdentity();
-  ObjConstants.MVP = ObjConstants.World * Camera.CreateViewProjectionMatrix();
   ObjConstants.UVScale = FVector2(1.0f, 1.0f);
   ObjConstants.ColorOverride = FVector(1.0f, 1.0f, 1.0f);
   ObjConstants.ColorOverrideAmount = 0.0f;
@@ -1196,6 +1212,8 @@ void FRenderer::RenderMeshPreviewScene(FPreviewRenderTarget& RenderTarget, const
     GridConstants.FadeEndDistance = std::max(100.0f, Extent * 10.0f);
     FlushLineBatch(GridConstants, FName("Grid"));
   }
+
+  SetViewProjection(PrevViewProjection);
 }
 
 void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, const FCamera& Camera, TSharedPtr<FStaticMesh> Meshasset, 
@@ -1251,9 +1269,12 @@ void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, c
     UpdateLightConstants(LightConstants, EViewModeIndex::VMI_Lit);
 
 
+    // 프리뷰 카메라로 b1 ViewProj를 바꾸고, 끝나면 에디터 뷰의 값으로 되돌린다
+    const FMatrix PrevViewProjection = CurrentViewProjection;
+    SetViewProjection(Camera.CreateViewProjectionMatrix());
+
     FObjectConstants ObjConstants = {};
     ObjConstants.World = FMatrix::GetIdentity();
-    ObjConstants.MVP = ObjConstants.World * Camera.CreateViewProjectionMatrix();
     ObjConstants.UVScale = FVector2(1.0f, 1.0f);
     ObjConstants.ColorOverride = FVector(1.0f, 1.0f, 1.0f);
     ObjConstants.ColorOverrideAmount = 0.0f;
@@ -1274,5 +1295,7 @@ void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, c
         GridConstants.FadeEndDistance = std::max(100.0f, Extent * 10.0f);
         FlushLineBatch(GridConstants, FName("Grid"));
     }
+
+    SetViewProjection(PrevViewProjection);
 
 }

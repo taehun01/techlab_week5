@@ -56,7 +56,8 @@ public:
 	EGizmoHandle ActiveHandle = EGizmoHandle::None;
 
 private:
-	void DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& MVP) const;
+	// World: 축 메시의 월드 행렬 (카메라 행렬은 FRenderer::SetViewProjection으로 b1에 둔다)
+	void DrawAxis(FRenderer& Renderer, EGizmoHandle Handle, const FMatrix& World) const;
 	[[nodiscard]] float CalculateGizmoScale(const FVector& GizmoLocation, const FCamera& Camera) const;
 	[[nodiscard]] FVector2 WorldToViewport(const FVector& WorldPosition, const FCamera& Camera, const FVector2& ViewportSize) const;
 

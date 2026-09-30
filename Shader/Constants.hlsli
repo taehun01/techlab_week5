@@ -1,6 +1,7 @@
+// 오브젝트 상수. 카메라에 의존하는 값은 두지 않는다 (ViewProj는 b1).
+// 화면 위치 = mul(mul(pos, World), ViewProj)
 cbuffer ObjectConstants : register(b0)
 {
-    row_major float4x4 MVP;
     float3 ColorOverride;
     float ColorOverrideAmount;
     float2 UVScale;
@@ -17,10 +18,12 @@ cbuffer MaterialConstants : register(b3)
     float4 MaterialDiffuse;
 }
 
+// 뷰(카메라) 단위 상수. ViewProj에는 D3D 클립 변환까지 곱해 둔다 (FRenderer::SetViewProjection).
 cbuffer FrameConstants : register(b1)
 {
     float2 ViewportSize;
     float2 Padding;
+    row_major float4x4 ViewProj;
 }
 
 

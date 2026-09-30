@@ -93,6 +93,10 @@ public:
     void BeginFrame();
     void BindEditorViewportRenderTargets();
     void SetViewportUV(FVector2 TopLeftUV, FVector2 LengthUV);
+    // b1의 ViewProj 설정 (엔진 좌표계 ViewProj를 넘긴다. D3D 클립 변환은 내부에서 곱한다).
+    // World를 쓰는 셰이더(ExampleVS, TexturedUnlitVS, InstanceVS, RotationGizmoVS)는 이 값으로 화면 위치를 구한다.
+    void SetViewProjection(const FMatrix& ViewProj);
+    [[nodiscard]] const FMatrix& GetViewProjection() const { return CurrentViewProjection; }
     void ClearDepth();
     void SwapBuffer();
     void OnWindowSize(UINT Width, UINT Height);
@@ -177,6 +181,10 @@ private:
     static constexpr UINT ConstantBufferSize = 256u;
     Microsoft::WRL::ComPtr<ID3D11Buffer> b0ConstantBuffer;
     Microsoft::WRL::ComPtr<ID3D11Buffer> FrameConstantBuffer;
+    // b1 내용의 CPU 사본. 뷰포트 크기와 ViewProj를 따로 갱신해도 서로 덮어쓰지 않게 한다.
+    FFrameConstants FrameConstants;
+    FMatrix CurrentViewProjection = FMatrix::GetIdentity();
+    void UploadFrameConstants();
     Microsoft::WRL::ComPtr<ID3D11Buffer> LightConstantBuffer;
     // 머티리얼 없이 그리는 경로(라인)용 b3 기본값 (MaterialDiffuse = 흰색)
     Microsoft::WRL::ComPtr<ID3D11Buffer> DefaultMaterialConstantBuffer;

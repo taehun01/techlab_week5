@@ -6,9 +6,9 @@
 #include "Runtime/Math/FVector4.h"
 
 
-// b0에 바인딩
+// b0에 바인딩. 카메라에 의존하는 값은 두지 않는다.
+// MVP는 셰이더가 World와 b1의 ViewProj(FFrameConstants)로 계산한다.
 struct FObjectConstants {
-  FMatrix MVP;
   FVector ColorOverride{0.0f, 0.0f, 0.0f};
   float ColorOverrideAmount = 0.0f;
   FVector2 UVScale{1.0f, 1.0f};
@@ -47,10 +47,12 @@ struct FGridLineConstants {
 
 static_assert(sizeof(FGridLineConstants) % 16 == 0);
 
-// b1에 바인딩
+// b1에 바인딩 (뷰 단위)
 struct FFrameConstants {
   FVector2 ViewportSize;
   float Padding[2];
+  // D3D 클립 변환까지 곱한 ViewProj (FRenderer::SetViewProjection)
+  FMatrix ViewProj = FMatrix::GetIdentity();
 };
 static_assert(sizeof(FFrameConstants) % 16 == 0);
 
