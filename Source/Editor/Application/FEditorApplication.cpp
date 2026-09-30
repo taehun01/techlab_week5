@@ -154,7 +154,7 @@ void FEditorApplication::Tick(float DeltaTime) {
         //PropertyWindow.Process(Editor);
         ConsoleWindow.Process(Editor);
         //ContentsDrawer.Process(Editor);
-        OverlayStat.Process(Editor, DeltaTime);
+        OverlayStat.Process(Editor);
         STATS.Reset();
 
         for (const auto& Window : PreviewWindows)

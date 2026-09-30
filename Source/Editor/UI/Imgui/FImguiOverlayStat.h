@@ -10,12 +10,11 @@ struct FImguiOverlayStat
 	FImguiStatMemory StatMemory;
 	FImguiStatPicking StatPicking;
 
-	//TODO: Editor를 복사로 받고있음
-	const void Process(FEditor InEditor, const float InDeltaTime)
+	const void Process(FEditor& InEditor)
 	{
 		if (STATS.IsStatFps())
 		{
-			StatFps.Process(InEditor, InDeltaTime);
+			StatFps.Process(InEditor);
 		}
 		if (STATS.IsStatMemory())
 		{
