@@ -12,6 +12,7 @@
 #include "Runtime/Engine/FSceneView.h"
 #include "Runtime/Math/FVector2.h"
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
+#include "Runtime/Rendering/FObjectConstantStore.h"
 #include "Runtime/Rendering/FRenderer.h"
 #include "Runtime/Rendering/ShaderConstants.h"
 #include "Runtime/Rendering/FPreviewRenderTarget.h"
@@ -46,6 +47,23 @@ void ParallelForRange(size_t Count, const TBody& Body, size_t ChunkSize = 1024)
         Body(Begin, (std::min)(Count, Begin + ChunkSize));
     });
 }
+
+// 컴포넌트 색과 선택 여부로 최종 ColorOverride를 정한다 (선택되면 밝게 덧칠)
+void ComputeColorOverride(const UMeshComponent& MeshComponent, bool bSelected, FVector& OutColor, float& OutAmount)
+{
+    OutColor = MeshComponent.GetColor();
+    OutAmount = MeshComponent.GetColorAmount();
+
+    if (bSelected && OutAmount > 0.0f)
+    {
+        OutColor = OutColor * 0.7f + FVector{ 0.3f, 0.3f, 0.3f };
+    }
+    else if (bSelected)
+    {
+        OutColor = FVector{ 1.0f, 1.0f, 1.0f };
+        OutAmount = 0.5f;
+    }
+}
 }
 
 FRenderView::FRenderView(FRenderer &Renderer) : Renderer(Renderer) {}
@@ -72,6 +90,11 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     const float NearZ = Camera.Projection.NearZ;
     const float FarZ = Camera.Projection.FarZ;
     const uint64 ShowFlags = static_cast<uint64>(View.ShowFlags);
+
+    // 영구 상수: 병렬 단계에서 상수를 만들어 CPU 사본과 비교하고, 달라진 슬롯만 dirty로 둔다.
+    // 업로드는 FlushQueue에서 dirty 슬롯만 한다 (정지한 오브젝트는 카메라가 움직여도 다시 올리지 않는다).
+    const bool bUsePersistentConstants = Renderer.SupportsPersistentObjectConstants();
+    FObjectConstantStore& ConstantStore = FObjectConstantStore::Get();
 
     CullResults.resize(Candidates.size());
     {
@@ -102,6 +125,19 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
                 Result.QuantizedDistance = static_cast<uint32>(0xffffff * NormalizedDistance);
 
                 Result.bVisible = true;
+
+                // 영구 상수 갱신 (슬롯마다 이 스레드만 쓴다). 뷰 모드 셰이딩은 b1이 맡으므로 DisableShading은 0.
+                const uint32 PersistentSlot = MeshComponent->GetPersistentConstantSlot();
+                if (bUsePersistentConstants && PersistentSlot != FObjectConstantStore::InvalidSlot)
+                {
+                    const bool bSelected = SelectedActor && MeshComponent->GetActorOwner() == SelectedActor;
+
+                    FObjectConstants Constants{};
+                    Constants.World = Result.World;
+                    ComputeColorOverride(*MeshComponent, bSelected, Constants.ColorOverride, Constants.ColorOverrideAmount);
+                    Constants.UVOffset = MeshComponent->GetRenderUVOffset();
+                    ConstantStore.Update(PersistentSlot, Constants);
+                }
 
                 // Select LOD Level
                 FStaticMesh* StaticMesh = MeshComponent->GetFStaticMesh();
@@ -176,19 +212,24 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
         if (DrawItems.empty() && RenderDatas.empty()) continue;
 
-        // 공통 Color 계산 (컴포넌트당 1회)
-        FVector FinalColorOverride = MeshComponent->GetColor();
-        float   FinalColorOverrideAmount = MeshComponent->GetColorAmount();
+        // 영구 슬롯이 있으면 상수는 병렬 단계에서 이미 갱신됐다. 항목은 슬롯 번호만 들고 간다.
+        const uint32 PersistentSlot = MeshComponent->GetPersistentConstantSlot();
+        if (bFastPath && bUsePersistentConstants && PersistentSlot != FObjectConstantStore::InvalidSlot)
+        {
+            for (FDrawItem& Item : DrawItems)
+            {
+                if (!Item.Material) Item.Material = SimpleMaterial;
+                Item.PrimitiveIndex = PersistentSlot;
+                Item.bPersistentConstants = true;
+                PushItem(Item, QuantizedDistance);
+            }
+            continue;
+        }
 
-        if (bSelected && FinalColorOverrideAmount > 0.0f)
-        {
-            FinalColorOverride = FinalColorOverride * 0.7f + FVector{ 0.3f, 0.3f, 0.3f };
-        }
-        else if (bSelected)
-        {
-            FinalColorOverride = FVector{ 1.0f, 1.0f, 1.0f };
-            FinalColorOverrideAmount = 0.5f;
-        }
+        // 여기부터는 이번 프레임에만 쓰는 상수 (빌보드·텍스트 등, 또는 영구 상수를 못 쓰는 환경)
+        FVector FinalColorOverride;
+        float   FinalColorOverrideAmount = 0.0f;
+        ComputeColorOverride(*MeshComponent, bSelected, FinalColorOverride, FinalColorOverrideAmount);
 
         if (bFastPath)
         {
@@ -524,7 +565,10 @@ void FRenderView::DrawItem(const FDrawItem& Item)
 {
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
     // 화면 위치는 셰이더가 World와 b1의 ViewProj(RenderView에서 설정)로 계산한다
-    Renderer.Draw(*Item.Mesh, *Item.Material, RenderQueue.GetPrimitiveConstants()[Item.PrimitiveIndex],
+    const FObjectConstants& Constants = Item.bPersistentConstants
+        ? FObjectConstantStore::Get().GetConstants(Item.PrimitiveIndex)
+        : RenderQueue.GetPrimitiveConstants()[Item.PrimitiveIndex];
+    Renderer.Draw(*Item.Mesh, *Item.Material, Constants,
         Item.StartIndex, Item.IndexCount,
         /*Slot*/ 0u, /*bApplyViewMode*/ true, /*bConstantsInD3DClip*/ true);
 }
@@ -545,13 +589,22 @@ void FRenderView::FlushQueue(const FCamera& Camera)
         const TArray<FObjectConstants>& PrimitiveConstants = RenderQueue.GetPrimitiveConstants();
         const uint32 OpaqueCount = static_cast<uint32>(OpaqueKeys.size());
 
-        // 상수를 한 번에 올리고 드로우마다 슬롯 오프셋만 바인딩한다 (드로우마다 Map/Unmap 제거)
-        // 슬롯 = 컴포넌트(PrimitiveIndex): 업로드는 PrimitiveConstants를 순서대로 복사하고,
-        // 같은 컴포넌트의 섹션들은 슬롯 하나를 공유한다. 머티리얼 색은 b3(머티리얼 바인딩)로 간다.
-        // 큐 항목의 Mesh·Material은 수집 단계에서 항상 유효하게 채워진다
+        // 드로우마다 Map/Unmap하지 않고, 상수는 미리 올려 둔 뒤 드로우마다 슬롯 오프셋만 바인딩한다.
+        //  - 영구 슬롯(정적 메시): 병렬 수집 단계에서 dirty가 된 슬롯만 영구 버퍼에 올린다
+        //  - 이번 프레임 슬롯(빌보드·텍스트 등): PrimitiveConstants를 링 버퍼에 순서대로 복사한다
+        // 머티리얼 색은 b3(머티리얼 바인딩)로 간다. 큐 항목의 Mesh·Material은 수집 단계에서 항상 유효하게 채워진다.
         const uint32 PrimitiveCount = static_cast<uint32>(PrimitiveConstants.size());
-        if (OpaqueCount > 0u && Renderer.BeginObjectConstants(PrimitiveCount))
+        if (OpaqueCount > 0u && Renderer.SupportsConstantBufferOffset())
         {
+            if (Renderer.SupportsPersistentObjectConstants())
+            {
+                Renderer.UploadPersistentObjectConstants();
+            }
+            // 업로드 중 버퍼 생성에 실패했으면 영구 슬롯 항목은 CPU 사본으로 한 개씩 그린다 (DrawItem)
+            const bool bPersistentReady = Renderer.SupportsPersistentObjectConstants();
+
+            bool bTransientReady = PrimitiveCount == 0u;
+            if (!bTransientReady && Renderer.BeginObjectConstants(PrimitiveCount))
             {
                 ZoneScopedN("Upload Object Constants");
                 for (uint32 p = 0; p < PrimitiveCount; ++p)
@@ -559,12 +612,21 @@ void FRenderView::FlushQueue(const FCamera& Camera)
                     Renderer.WriteObjectConstants(p, PrimitiveConstants[p]);
                 }
                 Renderer.EndObjectConstants();
+                bTransientReady = true;
             }
 
             for (uint32 i = 0; i < OpaqueCount; ++i)
             {
                 const FDrawItem& Item = OpaqueItems[OpaqueKeys[i].second];
-                Renderer.DrawWithObjectConstants(Item.PrimitiveIndex, *Item.Mesh, *Item.Material, Item.StartIndex, Item.IndexCount);
+                if (Item.bPersistentConstants ? bPersistentReady : bTransientReady)
+                {
+                    Renderer.DrawWithObjectConstants(Item.PrimitiveIndex, Item.bPersistentConstants,
+                        *Item.Mesh, *Item.Material, Item.StartIndex, Item.IndexCount);
+                }
+                else
+                {
+                    DrawItem(Item);
+                }
             }
         }
         else

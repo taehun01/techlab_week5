@@ -3,6 +3,7 @@
 #include "UClass.h"
 #include "Runtime/Engine/UScene.h"
 #include "Runtime/Rendering/FRenderResourceLibrary.h"
+#include "Runtime/Rendering/FObjectConstantStore.h"
 
 IMPLEMENT_UCLASS(UMeshComponent, UPrimitiveComponent)
 
@@ -23,6 +24,12 @@ void UMeshComponent::Register(UScene& InScene)
 {
     Super::Register(InScene);
     InScene.AddRenderComponent(this);
+
+    // 렌더 목록에 들어가는 동안 쓸 영구 상수 슬롯
+    if (UsesPersistentConstants() && PersistentConstantSlot == FObjectConstantStore::InvalidSlot)
+    {
+        PersistentConstantSlot = FObjectConstantStore::Get().Allocate();
+    }
 }
 
 void UMeshComponent::Unregister()
@@ -30,6 +37,11 @@ void UMeshComponent::Unregister()
     if (Scene)
     {
         Scene->RemoveRenderComponent(this);
+    }
+    if (PersistentConstantSlot != FObjectConstantStore::InvalidSlot)
+    {
+        FObjectConstantStore::Get().Free(PersistentConstantSlot);
+        PersistentConstantSlot = FObjectConstantStore::InvalidSlot;
     }
     Super::Unregister();
 }

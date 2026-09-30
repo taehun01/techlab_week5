@@ -22,7 +22,10 @@ cbuffer MaterialConstants : register(b3)
 cbuffer FrameConstants : register(b1)
 {
     float2 ViewportSize;
-    float2 Padding;
+    // 뷰 모드(Unlit)에 따른 셰이딩 끄기. 오브젝트 상수(b0)의 DisableShading과 OR로 쓴다.
+    // 뷰마다 다른 값이라 오브젝트 상수에 두면 영구 슬롯이 뷰마다 바뀌므로 여기에 둔다.
+    float ViewDisableShading;
+    float FramePadding;
     row_major float4x4 ViewProj;
 }
 

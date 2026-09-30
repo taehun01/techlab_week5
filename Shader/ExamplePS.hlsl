@@ -12,7 +12,7 @@ float4 MainPS(PS_INPUT Input) : SV_Target
 {
     float3 BaseColor = lerp((Input.Color.rgb * MaterialDiffuse.rgb), ColorOverride, ColorOverrideAmount);
 
-    if (DisableShading > 0.5f)
+    if (DisableShading > 0.5f || ViewDisableShading > 0.5f)
     {
         return float4(BaseColor, Input.Color.a);
     }

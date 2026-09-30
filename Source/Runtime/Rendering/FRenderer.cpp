@@ -8,6 +8,7 @@
 #include "Runtime/Core/PointerTypes.h"
 #include "Runtime/Engine/FCamera.h"
 #include "Runtime/Rendering/FRenderQueue.h"
+#include "Runtime/Rendering/FObjectConstantStore.h"
 #include "Runtime/Rendering/FTexture.h"
 #include "ShaderConstants.h"
 #include "ThirdParty/DirectXTK/Inc/DDSTextureLoader.h"
@@ -58,6 +59,7 @@ void FRenderer::Shutdown() {
   FrameConstantBuffer.Reset();
   ObjectConstantRing.Reset();
   ObjectConstantRingCapacity = 0u;
+  PersistentObjectConstantChunks.clear();
   DefaultMaterialConstantBuffer.Reset();
   Context1.Reset();
 
@@ -117,6 +119,9 @@ void FRenderer::SetViewProjection(const FMatrix& ViewProj) {
 }
 
 void FRenderer::UploadFrameConstants() {
+  if (!Context || !FrameConstantBuffer) {
+    return;
+  }
   Context->UpdateSubresource(FrameConstantBuffer.Get(), 0, nullptr, &FrameConstants,
                              0, 0);
   Context->VSSetConstantBuffers(1, 1, FrameConstantBuffer.GetAddressOf());
@@ -167,18 +172,108 @@ void FRenderer::EndObjectConstants() {
   MappedObjectConstants = nullptr;
 }
 
-void FRenderer::DrawWithObjectConstants(uint32 SlotIndex, const FStaticMesh& InMesh, const FMaterial& InMaterial,
-                                        int32 startidx, int32 indicesCount) {
+void FRenderer::DrawWithObjectConstants(uint32 SlotIndex, bool bPersistent, const FStaticMesh& InMesh,
+                                        const FMaterial& InMaterial, int32 startidx, int32 indicesCount) {
   // 오프셋·개수 단위는 상수(16바이트) 1개
   constexpr UINT NumConstants = ObjectConstantSlotSize / 16u;
-  const UINT FirstConstant = SlotIndex * NumConstants;
-  ID3D11Buffer* Ring = ObjectConstantRing.Get();
-  Context1->VSSetConstantBuffers1(0, 1, &Ring, &FirstConstant, &NumConstants);
-  Context1->PSSetConstantBuffers1(0, 1, &Ring, &FirstConstant, &NumConstants);
-  // b0 슬롯이 링 버퍼를 가리키므로 이후 일반 Draw는 b0ConstantBuffer를 다시 바인딩해야 한다
+  ID3D11Buffer* Buffer = nullptr;
+  UINT FirstConstant = 0u;
+  if (bPersistent) {
+    // 영구 슬롯은 64KB 청크 안의 칸
+    Buffer = PersistentObjectConstantChunks[SlotIndex / PersistentSlotsPerChunk].Get();
+    FirstConstant = (SlotIndex % PersistentSlotsPerChunk) * NumConstants;
+  } else {
+    Buffer = ObjectConstantRing.Get();
+    FirstConstant = SlotIndex * NumConstants;
+  }
+  Context1->VSSetConstantBuffers1(0, 1, &Buffer, &FirstConstant, &NumConstants);
+  Context1->PSSetConstantBuffers1(0, 1, &Buffer, &FirstConstant, &NumConstants);
+  // b0 슬롯이 오브젝트 상수 버퍼를 가리키므로 이후 일반 Draw는 b0ConstantBuffer를 다시 바인딩해야 한다
   CurrentRenderState.bIsConstantBufferBind = false;
 
   BindStateAndDraw(InMesh, InMaterial, startidx, indicesCount, true);
+}
+
+void FRenderer::UploadPersistentObjectConstants() {
+  ZoneScopedN("Upload Persistent Constants");
+  FObjectConstantStore& Store = FObjectConstantStore::Get();
+  const uint32 SlotCount = Store.GetSlotCount();
+  if (SlotCount == 0u) {
+    return;
+  }
+
+  constexpr uint32 ChunkBytes = PersistentSlotsPerChunk * ObjectConstantSlotSize; // 64KB
+  const uint32 ChunkCount = (SlotCount + PersistentSlotsPerChunk - 1u) / PersistentSlotsPerChunk;
+
+  // 슬롯이 늘어 청크가 모자라면 새 청크를 만들고, 그 청크의 슬롯은 전부 다시 올린다
+  const uint32 ExistingChunks = static_cast<uint32>(PersistentObjectConstantChunks.size());
+  if (ChunkCount > ExistingChunks) {
+    const D3D11_BUFFER_DESC Desc = {
+        .ByteWidth = ChunkBytes,
+        .Usage = D3D11_USAGE_DEFAULT,
+        .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+    };
+    PersistentObjectConstantChunks.resize(ChunkCount);
+    for (uint32 Chunk = ExistingChunks; Chunk < ChunkCount; ++Chunk) {
+      if (FAILED(Device->CreateBuffer(&Desc, nullptr, &PersistentObjectConstantChunks[Chunk]))) {
+        // 만들 수 없으면 영구 상수를 끄고 이번 프레임부터 기존(매 프레임 업로드) 경로로 그린다
+        UE_LOG_ERROR("[FRenderer] 영구 오브젝트 상수 버퍼 생성 실패. 매 프레임 업로드 경로로 전환합니다.");
+        bPersistentObjectConstantsFailed = true;
+        PersistentObjectConstantChunks.resize(ExistingChunks);
+        return;
+      }
+    }
+    uint8* Dirty = Store.GetDirtyFlags();
+    const uint32 FirstNewSlot = ExistingChunks * PersistentSlotsPerChunk;
+    std::memset(Dirty + FirstNewSlot, 1, SlotCount - FirstNewSlot);
+    UE_LOG("[FRenderer] 영구 오브젝트 상수 청크 %u -> %u개 (슬롯 %u)", ExistingChunks, ChunkCount, SlotCount);
+  }
+
+  // dirty 슬롯이 하나라도 있는 청크만 통째로(64KB) 올린다.
+  // dirty가 아닌 슬롯은 CPU 사본과 GPU 내용이 같으므로 같이 올려도 결과가 같다.
+  uint8* Dirty = Store.GetDirtyFlags();
+  const uint8* Source = reinterpret_cast<const uint8*>(Store.GetSlotData());
+  uint32 UploadedChunks = 0u;
+
+  for (uint32 Chunk = 0u; Chunk < ChunkCount; ++Chunk) {
+    const uint32 Begin = Chunk * PersistentSlotsPerChunk;
+    const uint32 End = (std::min)(Begin + PersistentSlotsPerChunk, SlotCount);
+
+    bool bChunkDirty = false;
+    for (uint32 Slot = Begin; Slot < End; ++Slot) {
+      if (Dirty[Slot]) {
+        bChunkDirty = true;
+        break;
+      }
+    }
+    if (!bChunkDirty) {
+      continue;
+    }
+
+    const uint8* ChunkSource = Source + static_cast<size_t>(Begin) * ObjectConstantSlotSize;
+    if (End - Begin < PersistentSlotsPerChunk) {
+      // 마지막 청크가 덜 찼으면 64KB 임시 버퍼에 옮겨 올린다 (UpdateSubresource는 버퍼 전체 크기를 읽는다)
+      PersistentChunkScratch.resize(ChunkBytes);
+      std::memcpy(PersistentChunkScratch.data(), ChunkSource, static_cast<size_t>(End - Begin) * ObjectConstantSlotSize);
+      ChunkSource = PersistentChunkScratch.data();
+    }
+    Context->UpdateSubresource(PersistentObjectConstantChunks[Chunk].Get(), 0, nullptr, ChunkSource, 0, 0);
+    std::memset(Dirty + Begin, 0, End - Begin);
+    ++UploadedChunks;
+  }
+
+  TracyPlot("Persistent Constant Chunks Uploaded", static_cast<int64_t>(UploadedChunks));
+}
+
+void FRenderer::SetRenderMode(EViewModeIndex InMode) {
+  CurrentRenderMode = InMode;
+
+  // 뷰 모드에 따른 셰이딩 끄기는 b1에 둔다 (값이 바뀔 때만 올린다)
+  const float ViewDisableShading = (InMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
+  if (FrameConstants.ViewDisableShading != ViewDisableShading) {
+    FrameConstants.ViewDisableShading = ViewDisableShading;
+    UploadFrameConstants();
+  }
 }
 
 void FRenderer::BindStateAndDraw(const FStaticMesh& InMesh, const FMaterial& InMaterial,
@@ -1134,6 +1229,10 @@ void FRenderer::RenderMeshPreviewScene(FPreviewRenderTarget& RenderTarget, const
   D3DVP.MaxDepth = 1.0f;
   Context->RSSetViewports(1, &D3DVP);
 
+  // 프리뷰 카메라·뷰 모드로 b1(ViewProj·뷰 셰이딩)을 바꾸고, 끝나면 에디터 뷰의 값으로 되돌린다
+  const FFrameConstants PrevFrameConstants = FrameConstants;
+  const FMatrix PrevViewProjection = CurrentViewProjection;
+
   // 조명 상수 버퍼 설정 및 바인딩
   FLightConstants LightConstants;
   LightConstants.LightDirection = FVector(-0.577f, -0.577f, -0.577f);
@@ -1143,11 +1242,9 @@ void FRenderer::RenderMeshPreviewScene(FPreviewRenderTarget& RenderTarget, const
   SetRenderMode(EViewModeIndex::VMI_Lit);
   UpdateLightConstants(LightConstants, EViewModeIndex::VMI_Lit);
 
-  
+
   auto& Sections = MeshAsset->GetSections();
 
-  // 프리뷰 카메라로 b1 ViewProj를 바꾸고, 끝나면 에디터 뷰의 값으로 되돌린다
-  const FMatrix PrevViewProjection = CurrentViewProjection;
   SetViewProjection(Camera.CreateViewProjectionMatrix());
 
   FObjectConstants ObjConstants = {};
@@ -1213,7 +1310,9 @@ void FRenderer::RenderMeshPreviewScene(FPreviewRenderTarget& RenderTarget, const
     FlushLineBatch(GridConstants, FName("Grid"));
   }
 
-  SetViewProjection(PrevViewProjection);
+  FrameConstants = PrevFrameConstants;
+  CurrentViewProjection = PrevViewProjection;
+  UploadFrameConstants();
 }
 
 void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, const FCamera& Camera, TSharedPtr<FStaticMesh> Meshasset, 
@@ -1259,6 +1358,10 @@ void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, c
     D3DVP.MaxDepth = 1.0f;
     Context->RSSetViewports(1, &D3DVP);
 
+    // 프리뷰 카메라·뷰 모드로 b1(ViewProj·뷰 셰이딩)을 바꾸고, 끝나면 에디터 뷰의 값으로 되돌린다
+    const FFrameConstants PrevFrameConstants = FrameConstants;
+    const FMatrix PrevViewProjection = CurrentViewProjection;
+
     // 조명 상수 버퍼 설정 및 바인딩
     FLightConstants LightConstants;
     LightConstants.LightDirection = FVector(-0.577f, -0.577f, -0.577f);
@@ -1268,9 +1371,6 @@ void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, c
     SetRenderMode(EViewModeIndex::VMI_Lit);
     UpdateLightConstants(LightConstants, EViewModeIndex::VMI_Lit);
 
-
-    // 프리뷰 카메라로 b1 ViewProj를 바꾸고, 끝나면 에디터 뷰의 값으로 되돌린다
-    const FMatrix PrevViewProjection = CurrentViewProjection;
     SetViewProjection(Camera.CreateViewProjectionMatrix());
 
     FObjectConstants ObjConstants = {};
@@ -1296,6 +1396,8 @@ void FRenderer::RenderMaterialPreviewScene(FPreviewRenderTarget& RenderTarget, c
         FlushLineBatch(GridConstants, FName("Grid"));
     }
 
-    SetViewProjection(PrevViewProjection);
+    FrameConstants = PrevFrameConstants;
+    CurrentViewProjection = PrevViewProjection;
+    UploadFrameConstants();
 
 }

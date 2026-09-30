@@ -50,7 +50,9 @@ static_assert(sizeof(FGridLineConstants) % 16 == 0);
 // b1에 바인딩 (뷰 단위)
 struct FFrameConstants {
   FVector2 ViewportSize;
-  float Padding[2];
+  // 뷰 모드(Unlit)에 따른 셰이딩 끄기 (FRenderer::SetRenderMode). b0의 DisableShading과 OR로 쓴다.
+  float ViewDisableShading = 0.0f;
+  float Padding = 0.0f;
   // D3D 클립 변환까지 곱한 ViewProj (FRenderer::SetViewProjection)
   FMatrix ViewProj = FMatrix::GetIdentity();
 };

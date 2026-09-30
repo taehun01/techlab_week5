@@ -54,10 +54,18 @@ public:
     uint8 GetLastLod() { return LastLod; }
     virtual FStaticMesh* GetFStaticMesh() const { return nullptr; }
 
+    // 영구 오브젝트 상수 슬롯 (FObjectConstantStore). 씬에 등록돼 있는 동안만 유효하다.
+    // 상수가 카메라와 무관한 컴포넌트만 쓴다 (카메라를 향하는 빌보드·텍스트는 매 프레임 올리는 기존 경로).
+    virtual bool UsesPersistentConstants() const { return false; }
+    [[nodiscard]] uint32 GetPersistentConstantSlot() const { return PersistentConstantSlot; }
+    // 영구 상수에 넣을 UV 오프셋 (병렬 수집 단계에서 읽기 전용으로 호출된다)
+    [[nodiscard]] virtual FVector2 GetRenderUVOffset() const { return FVector2{ 0.0f, 0.0f }; }
+
 protected:
     UMeshComponent() = default;
 
     uint8 LastLod = 0u;
+    uint32 PersistentConstantSlot = ~0u; // FObjectConstantStore::InvalidSlot
 
     TArray<FRenderData> RenderDatas;
 };

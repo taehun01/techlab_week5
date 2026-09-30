@@ -102,7 +102,8 @@ public:
     void OnWindowSize(UINT Width, UINT Height);
 
     EViewModeIndex GetRenderMode() const { return CurrentRenderMode; }
-    void SetRenderMode(EViewModeIndex InMode) { CurrentRenderMode = InMode; }
+    // 뷰 모드 설정. Unlit이면 b1의 ViewDisableShading도 켠다 (오브젝트 상수에는 뷰 모드 값을 두지 않는다).
+    void SetRenderMode(EViewModeIndex InMode);
 
     [[nodiscard]]
     TSharedPtr<FStaticMesh> CreateMesh(const FMeshDesc& Desc);
@@ -157,8 +158,17 @@ public:
     bool BeginObjectConstants(uint32 Count);
     void WriteObjectConstants(uint32 SlotIndex, const FObjectConstants& Constants);
     void EndObjectConstants();
-    void DrawWithObjectConstants(uint32 SlotIndex, const FStaticMesh& InMesh, const FMaterial& InMaterial,
+    // bPersistent=true면 영구 상수 버퍼(FObjectConstantStore 슬롯), false면 이번 프레임 링 버퍼 슬롯을 바인딩한다
+    void DrawWithObjectConstants(uint32 SlotIndex, bool bPersistent, const FStaticMesh& InMesh, const FMaterial& InMaterial,
         int32 startidx, int32 indicesCount);
+
+    [[nodiscard]] bool SupportsConstantBufferOffset() const { return bSupportsConstantBufferOffset; }
+    // 영구 상수 버퍼 사용 가능 여부 (상수 버퍼 오프셋 바인딩이 필요하고, 버퍼 생성에 실패한 적이 없어야 한다)
+    [[nodiscard]] bool SupportsPersistentObjectConstants() const {
+        return bSupportsConstantBufferOffset && !bPersistentObjectConstantsFailed;
+    }
+    // FObjectConstantStore에서 dirty 슬롯이 있는 청크만 영구 상수 버퍼에 올린다
+    void UploadPersistentObjectConstants();
 
 private:
     bool InitializeDeviceAndSwapChain(HWND Window);
@@ -197,6 +207,16 @@ private:
     uint32 ObjectConstantRingCapacity = 0u;
     uint8* MappedObjectConstants = nullptr;
     bool bSupportsConstantBufferOffset = false;
+
+    // 영구 오브젝트 상수 버퍼. 64KB(256슬롯) 청크 여러 개로 나눈다:
+    //  - 64KB는 D3D11 상수 버퍼 기본 한도라 어디서나 만들 수 있다 (더 큰 DEFAULT 상수 버퍼는 11.1 선택 기능)
+    //  - dirty 슬롯이 있는 청크만 통째로 UpdateSubresource한다 (상수 버퍼 부분 갱신 기능에 의존하지 않는다)
+    // 슬롯 s는 청크 s / 256의 (s % 256)번째 칸이다.
+    static constexpr uint32 PersistentSlotsPerChunk = 256u;
+    TArray<Microsoft::WRL::ComPtr<ID3D11Buffer>> PersistentObjectConstantChunks;
+    // 마지막 청크가 덜 찼을 때 64KB를 채워 올리기 위한 임시 버퍼
+    TArray<uint8> PersistentChunkScratch;
+    bool bPersistentObjectConstantsFailed = false;
 
     // 파이프라인·머티리얼·메시를 (바뀐 경우에만) 바인딩하고 드로우한다. b0 바인딩은 호출 측 책임.
     void BindStateAndDraw(const FStaticMesh& InMesh, const FMaterial& InMaterial,

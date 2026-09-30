@@ -34,7 +34,10 @@ struct FDrawItem
     FMaterial* Material = nullptr;   // 큐에 들어간 항목은 항상 유효 (못 찾으면 "Simple")
     int32 StartIndex = 0;
     int32 IndexCount = -1;           // -1이면 메시 전체
+    // bPersistentConstants=true: FObjectConstantStore의 영구 슬롯 번호
+    // false: 이번 프레임 FRenderQueue::PrimitiveConstants 인덱스
     uint32 PrimitiveIndex = 0;
+    bool bPersistentConstants = false;
 };
 
 // 한 프레임의 드로우 요청을 수집하는 큐

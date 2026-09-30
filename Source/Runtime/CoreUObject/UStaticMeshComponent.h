@@ -39,6 +39,10 @@ public:
 
     virtual FStaticMesh* GetFStaticMesh() const override { return StaticMesh ? StaticMesh->StaticMeshAsset.get() : nullptr; }
 
+    // 정적 메시의 상수(World·색·UV)는 카메라와 무관하므로 영구 슬롯을 쓴다
+    bool UsesPersistentConstants() const override { return !IsCameraFacing(); }
+    FVector2 GetRenderUVOffset() const override { return bIsMovingUV ? FVector2{ offset, 0.0f } : FVector2{ 0.0f, 0.0f }; }
+
 protected:
     UStaticMeshComponent() = default;
 
