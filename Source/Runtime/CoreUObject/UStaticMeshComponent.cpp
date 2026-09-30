@@ -101,15 +101,15 @@ void UStaticMeshComponent::AppendRenderDatas(const FCamera& Camera, TArray<FRend
     {
         const size_t Count = std::min(StaticMesh->Materials.size(), Sections.size());
 
+        // LodLevel은 SelectLod 결과(항상 LOD 개수 미만)이거나 0이라 범위를 다시 자르지 않는다
         for (size_t i = 0; i < Count; ++i)
         {
             FRenderData rdata;
             rdata.MeshId = CurrentMeshId;
             rdata.MeshPtr = MeshAsset;
             FillMaterial(static_cast<int32>(i), rdata);
-            uint32 Lod = std::min(LodLevel, MeshAsset->GetMeshLodCount() - 1);
-            rdata.startidx = Sections[i].Lods[Lod].FirstIndex;
-            rdata.indicesCount = Sections[i].Lods[Lod].IndexCount;
+            rdata.startidx = Sections[i].Lods[LodLevel].FirstIndex;
+            rdata.indicesCount = Sections[i].Lods[LodLevel].IndexCount;
 
             if (bIsMovingUV)
             {

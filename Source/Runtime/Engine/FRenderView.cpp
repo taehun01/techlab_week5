@@ -84,8 +84,8 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
                 FPrimitiveCullResult& Result = CullResults[i];
                 Result.bVisible = false;
 
+                // UScene::AddRenderComponent가 nullptr를 거르므로 후보는 항상 유효하다
                 UMeshComponent* MeshComponent = Candidates[i];
-                if (!MeshComponent) continue;
 
                 // 쇼 플래그 확인
                 if ((ShowFlags & static_cast<uint64>(MeshComponent->GetShowFlag())) == 0) continue;
@@ -491,19 +491,11 @@ void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& Pip
 
 void FRenderView::DrawRenderData(const FRenderData& Data)
 {
+    // 큐 항목만 들어오므로 MaterialPtr는 항상 유효하고,
+    // MeshPtr가 nullptr면 수집 단계에서 같은 MeshId로 이미 조회에 실패한 것이라 다시 찾지 않는다
     FStaticMesh* Mesh = Data.MeshPtr;
     FMaterial* Material = Data.MaterialPtr;
-
-    // 수집 단계를 거치지 않은 데이터 대비 폴백 조회
-    if (!Mesh || !Material)
-    {
-        auto& ResLib = FRenderResourceLibrary::Get();
-        if (!Mesh) Mesh = ResLib.GetMesh(Data.MeshId).get();
-        if (!Material) Material = ResLib.GetMaterial(Data.MaterialId).get();
-        if (!Material) Material = ResLib.GetMaterial(FName("Simple")).get();
-    }
-
-    if (!Mesh || !Material) return;
+    if (!Mesh) return;
 
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
     // 큐의 MVP는 CollectScenePrimitives에서 이미 D3D 클립 좌표계로 만들었다
@@ -527,6 +519,7 @@ void FRenderView::FlushQueue(const FCamera& Camera)
         const uint32 OpaqueCount = static_cast<uint32>(OpaqueKeys.size());
 
         // 상수를 한 번에 올리고 드로우마다 슬롯 오프셋만 바인딩한다 (드로우마다 Map/Unmap 제거)
+        // 큐의 MaterialPtr는 수집 단계에서 항상 채워진다 (못 찾으면 항상 등록돼 있는 "Simple")
         if (Renderer.BeginObjectConstants(OpaqueCount))
         {
             {
@@ -534,19 +527,15 @@ void FRenderView::FlushQueue(const FCamera& Camera)
                 for (uint32 i = 0; i < OpaqueCount; ++i)
                 {
                     const FRenderData& Data = OpaqueQ[OpaqueKeys[i].second];
-                    if (Data.MaterialPtr)
-                    {
-                        Renderer.WriteObjectConstants(i, Data.Constants, *Data.MaterialPtr);
-                    }
+                    Renderer.WriteObjectConstants(i, Data.Constants, *Data.MaterialPtr);
                 }
                 Renderer.EndObjectConstants();
             }
 
-            // 수집 단계에서 MeshPtr/MaterialPtr를 채워 두므로 여기서는 포인터만 쓴다
             for (uint32 i = 0; i < OpaqueCount; ++i)
             {
                 const FRenderData& Data = OpaqueQ[OpaqueKeys[i].second];
-                if (!Data.MeshPtr || !Data.MaterialPtr) continue;
+                if (!Data.MeshPtr) continue;
                 Renderer.DrawWithObjectConstants(i, *Data.MeshPtr, *Data.MaterialPtr, Data.startidx, Data.indicesCount);
             }
         }
@@ -628,7 +617,8 @@ void FRenderView::RenderPreviewScene(
 
 uint64 FRenderView::GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint32 Depth)
 {
-    if (!InMaterial || !InMesh || !InMaterial->GetPipeline())
+    // InMaterial은 수집 단계에서 항상 채워진다 (못 찾으면 "Simple")
+    if (!InMesh || !InMaterial->GetPipeline())
     {
         return 0xffffff;
     }
@@ -703,10 +693,7 @@ uint8 FRenderView::SelectLod(const FStaticMesh* StaticMesh, float Scale, float D
         return 0u;
     }
 
-    if (Setting.ForceLod != -1)
-    {
-        return Setting.ForceLod;
-    }
+    // ForceLod 분기는 제거했다: 유일한 호출부(CollectScenePrimitives)가 기본값(-1)만 넘긴다
     uint8 SelectedLod = 0u;
     for (int32 CurrentLod = static_cast<int32>(MeshLodCount) - 1; CurrentLod >= 0; --CurrentLod)
     {
