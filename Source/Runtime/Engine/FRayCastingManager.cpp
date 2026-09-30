@@ -7,6 +7,7 @@
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/CoreUObject/UMeshComponent.h"
 #include "Runtime/Engine/FSceneOctree.h"
+#include "Runtime/Engine/FSceneBVH.h"
 #include "Runtime/Engine/FStaticMeshBVH.h"
 #include "Runtime/Core/Log.h"
 #include <Runtime\Core\TArray.h>
@@ -135,6 +136,31 @@ bool FRayCastingManager::RaycastScene(const FRay& Ray, const FCamera& Camera, co
 }
 
 
+
+bool FRayCastingManager::RaycastSceneBVH(const FRay& Ray, const FCamera& Camera, const FSceneBVH& SceneBVH, UMeshComponent*& HitComponent, FVector& OutImpactPoint)
+{
+	FClosestHit Closest;
+
+	// 1) BVH 밖의 카메라 지향 컴포넌트 (개수가 적어 전부 검사)
+	for (UMeshComponent* Component : SceneBVH.GetCameraFacingComponents())
+	{
+		TestComponent(Ray, Camera, Component, Closest);
+	}
+
+	// 2) 씬 BVH: 위에서 찾은 거리보다 가까운 것만 찾는다
+	float MaxT = Closest.Distance;
+	UMeshComponent* BVHHit = nullptr;
+	if (SceneBVH.RaycastClosest(Ray, MaxT, BVHHit))
+	{
+		Closest.Component = BVHHit;
+		Closest.Distance = MaxT;
+		Closest.ImpactPoint = Ray.Origin + Ray.Direction * MaxT;
+	}
+
+	HitComponent = Closest.Component;
+	OutImpactPoint = Closest.ImpactPoint;
+	return Closest.Component != nullptr;
+}
 
 bool FRayCastingManager::RayIntersectsAABB(const FRay& Ray, const FAxisAlignedBoundingBox& AABB)
 {

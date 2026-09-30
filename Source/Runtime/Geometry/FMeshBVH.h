@@ -6,6 +6,8 @@
 #include "Runtime/Geometry/FRay.h"
 #include "Runtime/Math/FVector.h"
 
+#include <limits>
+
 struct FMeshBVHSettings
 {
 	int32 MaxTrianglesPerLeaf = 4;
@@ -29,7 +31,8 @@ public:
 	int32 GetNodeCount() const { return static_cast<int32>(Nodes.size()); }
 	int32 GetTriangleCount() const { return static_cast<int32>(Triangles.size()); }
 
-	bool QueryRayClosest(const FRay& Ray, FMeshBVHRayHit& OutHit) const;
+	// MaxT보다 먼 삼각형은 무시한다. 씬 BVH에서 이미 찾은 충돌 거리를 넘기면 노드를 더 일찍 버린다.
+	bool QueryRayClosest(const FRay& Ray, FMeshBVHRayHit& OutHit, float MaxT = (std::numeric_limits<float>::max)()) const;
 	void QueryAABB(const FAxisAlignedBoundingBox& Box, TArray<int32>& OutTriangles) const;
 
 private:

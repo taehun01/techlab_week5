@@ -19,6 +19,9 @@ public:
 	// 월드 광선으로 가장 가까운 삼각형을 찾는다. OutDistance는 월드 광선 기준 거리.
 	bool Raycast(const FRay& WorldRay, const FMatrix& ModelMatrix, float& OutDistance, FVector& OutImpactPoint) const;
 
+	// 역행렬을 이미 가지고 있을 때 쓰는 버전. MaxT보다 가까운 충돌만 찾고, 거리는 월드 광선 기준.
+	bool RaycastInverse(const FRay& WorldRay, const FMatrix& InvModelMatrix, float MaxT, float& OutDistance) const;
+
 private:
 	FMeshBVH Tree;
 };

@@ -3,6 +3,7 @@
 #include "Runtime/CoreUObject/UPrimitiveComponent.h"
 #include "Runtime/Engine/FRayCastingManager.h"
 #include "Runtime/Engine/FSceneOctree.h"
+#include "Runtime/Engine/FSceneBVH.h"
 #include "Runtime/Engine/UScene.h"
 #include "Runtime/Input/FInputManager.h"
 #include "Runtime/Math/FVector.h"
@@ -608,7 +609,20 @@ void FImguiEditorViewportWindow::HandlePicking(FEditor &Editor,
     bool bHit = false;
     double PickMs = 0.0;
     const auto PickStart = FClock::now();
-    if (Editor.bUseOctreePicking)
+    if (Editor.bUseSceneBVHPicking)
+    {
+        // 씬 BVH 방식의 총비용 = 예약된 갱신 반영(Flush) + 조회
+        const FSceneBVH &SceneBVH = Scene->GetSceneBVH();
+        const auto FlushEnd = FClock::now();
+
+        bHit = FRayCastingManager::RaycastSceneBVH(Ray, Viewport.ViewportCamera, SceneBVH, HitComponent, ImpactPoint);
+
+        PickMs = ToMs(FClock::now() - PickStart);
+        const double FlushMs = ToMs(FlushEnd - PickStart);
+        Editor.SceneBVHPickingStat.Add(PickMs, FlushMs);
+        UE_LOG("[Picking] SceneBVH: %.3f ms (Flush %.3f ms + Query %.3f ms)", PickMs, FlushMs, PickMs - FlushMs);
+    }
+    else if (Editor.bUseOctreePicking)
     {
         // 옥트리 방식의 총비용 = 예약된 갱신 반영(Flush) + 조회. 체감 지연과 맞추기 위해 둘 다 측정에 포함한다.
         const FSceneOctree &Octree = Scene->GetSceneOctree();
