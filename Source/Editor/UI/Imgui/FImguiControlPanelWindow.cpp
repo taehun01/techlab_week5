@@ -46,11 +46,8 @@ void FImguiControlPanelWindow::PickingSetting(FEditor& Editor)
 {
     ImGui::Text("Picking");
     ImGui::Checkbox("Use Scene BVH Picking", &Editor.bUseSceneBVHPicking);
-    ImGui::BeginDisabled(Editor.bUseSceneBVHPicking);
-    ImGui::Checkbox("Use Octree Picking", &Editor.bUseOctreePicking);
-    ImGui::EndDisabled();
 
-    // 시간은 Flush(옥트리 갱신 반영)를 포함한 총시간. Flush 열은 그중 갱신이 차지한 몫.
+    // 시간은 Flush(씬 BVH 갱신 반영)를 포함한 총시간. Flush 열은 그중 갱신이 차지한 몫.
     if (ImGui::BeginTable("PickingStats", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit))
     {
         ImGui::TableSetupColumn("Method");
@@ -85,15 +82,13 @@ void FImguiControlPanelWindow::PickingSetting(FEditor& Editor)
             ImGui::Text("%d", Stat.Count);
         };
         Row("Scene BVH", Editor.SceneBVHPickingStat, Editor.bUseSceneBVHPicking, true);
-        Row("Octree", Editor.OctreePickingStat, !Editor.bUseSceneBVHPicking && Editor.bUseOctreePicking, true);
-        Row("Brute Force", Editor.BruteForcePickingStat, !Editor.bUseSceneBVHPicking && !Editor.bUseOctreePicking, false);
+        Row("Brute Force", Editor.BruteForcePickingStat, !Editor.bUseSceneBVHPicking, false);
         ImGui::EndTable();
     }
 
     if (ImGui::Button("Reset Picking Stats"))
     {
         Editor.SceneBVHPickingStat.Reset();
-        Editor.OctreePickingStat.Reset();
         Editor.BruteForcePickingStat.Reset();
     }
 }

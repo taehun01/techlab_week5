@@ -9,7 +9,6 @@
 
 class UMeshComponent;
 class FStaticMesh;
-class FSceneOctree;
 class FSceneBVH;
 struct FAxisAlignedBoundingBox;
 
@@ -18,10 +17,6 @@ namespace FRayCastingManager
     FRay CreateRayFromScreenPosition(const FCamera& Camera, const FVector2& MousePosition, const FVector2& ViewportSize);
     bool RayIntersectsMeshes(const FRay& Ray, const FCamera& Camera, const TArray<UMeshComponent*>& Components, UMeshComponent*& HitComponent, FVector& OutImpactPoint);
 
-    // 옥트리로 후보를 좁혀 가장 가까운 메시를 찾는다.
-    // 후보를 AABB 진입 거리 순으로 검사하다가, 진입 거리가 이미 찾은 충돌보다 멀면 중단한다.
-    // 카메라를 향하는 컴포넌트는 옥트리에 없으므로 따로 전부 검사한다.
-    bool RaycastScene(const FRay& Ray, const FCamera& Camera, const FSceneOctree& Octree, UMeshComponent*& HitComponent, FVector& OutImpactPoint);
     // 씬 BVH(TLAS) + 메시 BVH(BLAS)로 가장 가까운 메시를 찾는다.
     // 카메라를 향하는 컴포넌트는 BVH에 없으므로 먼저 따로 검사하고, 그 거리를 BVH 순회의 상한으로 넘긴다.
     bool RaycastSceneBVH(const FRay& Ray, const FCamera& Camera, const FSceneBVH& SceneBVH, UMeshComponent*& HitComponent, FVector& OutImpactPoint);
