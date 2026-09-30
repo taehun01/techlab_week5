@@ -115,7 +115,7 @@ void FRenderer::ClearDepth() {
 void FRenderer::SwapBuffer() {
   {
     ZoneScopedN("Present");
-    SwapChain->Present(0u, 0u);
+    SwapChain->Present(0u, bAllowTearing ? DXGI_PRESENT_ALLOW_TEARING : 0u);
   }
   // 이번 프레임까지 끝난 GPU 타임스탬프 쿼리를 Tracy로 보낸다
   if (GpuProfiler) {
@@ -133,7 +133,8 @@ void FRenderer::OnWindowSize(UINT Width, UINT Height) {
   EditorViewPortSRV.Reset();
   renderTexture.Reset();
 
-  SwapChain->ResizeBuffers(0, Width, Height, DXGI_FORMAT_UNKNOWN, 0);
+  SwapChain->ResizeBuffers(0, Width, Height, DXGI_FORMAT_UNKNOWN,
+                          bAllowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0u);
   Viewport.Width = static_cast<float>(Width);
   Viewport.Height = static_cast<float>(Height);
 
@@ -482,12 +483,25 @@ TSharedPtr<FRenderPipeline> FRenderer::GetPipeline(const FName &Id) const {
 bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
   constexpr D3D_FEATURE_LEVEL FeatureLevels[] = {D3D_FEATURE_LEVEL_11_0};
 
+  // Tearing 지원 여부 확인
+  {
+    Microsoft::WRL::ComPtr<IDXGIFactory5> Factory5;
+    if (SUCCEEDED(CreateDXGIFactory1(IID_PPV_ARGS(&Factory5)))) {
+      BOOL Allow = FALSE;
+      if (SUCCEEDED(Factory5->CheckFeatureSupport(
+              DXGI_FEATURE_PRESENT_ALLOW_TEARING, &Allow, sizeof(Allow)))) {
+        bAllowTearing = (Allow == TRUE);
+      }
+    }
+  }
+
   DXGI_SWAP_CHAIN_DESC SwapChainDesc{
       .BufferDesc =
           {
               .Width = 0u,
               .Height = 0u,
-              .Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+              // flip model은 _SRGB 백버퍼 포맷을 허용하지 않음 → sRGB는 RTV에서 처리
+              .Format = DXGI_FORMAT_B8G8R8A8_UNORM,
           },
       .SampleDesc =
           {
@@ -497,7 +511,8 @@ bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
       .BufferCount = 2u,
       .OutputWindow = Window,
       .Windowed = true,
-      .SwapEffect = DXGI_SWAP_EFFECT_DISCARD,
+      .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+      .Flags = bAllowTearing ? static_cast<UINT>(DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING) : 0u,
   };
 
   UINT CreateDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
@@ -511,6 +526,14 @@ bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
       &SwapChainDesc, &SwapChain, &Device, nullptr, &Context);
   if (FAILED(Result)) {
     return false;
+  }
+
+  // tearing은 창/보더리스 모드에서만 동작
+  {
+    Microsoft::WRL::ComPtr<IDXGIFactory1> SwapFactory;
+    if (SUCCEEDED(SwapChain->GetParent(IID_PPV_ARGS(&SwapFactory)))) {
+      SwapFactory->MakeWindowAssociation(Window, DXGI_MWA_NO_ALT_ENTER);
+    }
   }
 
   Microsoft::WRL::ComPtr<IDXGIDevice1> DxgiDevice;
@@ -540,8 +563,13 @@ bool FRenderer::InitializeBackBufferAndDepthStencil() {
     return false;
   }
 
-  Result =
-      Device->CreateRenderTargetView(BackBuffer.Get(), nullptr, &BackBufferRTV);
+  // 백버퍼는 UNORM이지만 RTV를 sRGB로 만들어 기존과 같은 감마 보정 유지
+  D3D11_RENDER_TARGET_VIEW_DESC BackBufferRtvDesc{
+      .Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,
+      .ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D,
+  };
+  Result = Device->CreateRenderTargetView(BackBuffer.Get(), &BackBufferRtvDesc,
+                                          &BackBufferRTV);
   if (FAILED(Result)) {
     return false;
   }

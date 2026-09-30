@@ -16,6 +16,7 @@
 
 #include <Windows.h>
 #include <d3d11.h>
+#include <dxgi1_5.h>
 #include <filesystem>
 #include <wrl/client.h>
 #include "ThirdParty/tracy/tracy/Tracy.hpp"
@@ -155,6 +156,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Device> Device;
     Microsoft::WRL::ComPtr<ID3D11DeviceContext> Context;
     Microsoft::WRL::ComPtr<IDXGISwapChain> SwapChain;
+    bool bAllowTearing = false;
     D3D11_VIEWPORT Viewport{};
 
     Microsoft::WRL::ComPtr<ID3D11RenderTargetView> BackBufferRTV;
