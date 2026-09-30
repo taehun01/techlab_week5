@@ -13,6 +13,7 @@
 #include "Runtime/Math/FVector2.h"
 #include "Runtime/Math/FVector4.h"
 #include "FRenderResourceLibrary.h"
+#include "Runtime/Rendering/FLodSettings.h"
 
 // Todo: Need to split class
 
@@ -142,14 +143,6 @@ struct FSmoothingKeyHash
         return Hash;
     }
 };
-
-struct FLodSettings
-{
-    float Ratios[MAX_MESH_LOD] = { 1.f, 0.25f, 0.05f };
-    float TargetError[MAX_MESH_LOD] = { 0.f, 0.05f, 1.0f};
-    float SloppyFallbackFactor = 1.5f;
-};
-
 using FVertexMap = std::unordered_map<FCornerKey, uint32, FCornerKeyHash>;
 using FSmoothingMap = std::unordered_map<FSmoothingKey, FVector, FSmoothingKeyHash>;
 

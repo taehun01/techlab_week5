@@ -254,7 +254,8 @@ public:
             CurrentRenderState.Mesh->BindResources(*Context.Get());
         }
 
-        STATS.UpdateDrawCallCount(InMesh.GetIndexCount(), InMesh.GetVertexCount());
+        
+        STATS.UpdateDrawCallCount(indicesCount > 0 ? indicesCount : InMesh.GetIndexCount(), InMesh.GetVertexCount());
 
         // 외부에서 indicesCount를 양수로 지정한 경우 해당 섹션 범위만 1회 드로우
         if (indicesCount > 0)

@@ -10,8 +10,7 @@
 #include "Runtime/Core/TArray.h"
 #include "Runtime/Core/PointerTypes.h"
 #include "Runtime/Geometry/FAxisAlignedBoundingBox.h"
-// LOD 생성 개수
-constexpr uint32 MAX_MESH_LOD = 3u; 
+#include "Runtime/Rendering/FLodSettings.h"
 
 // 각 인덱스가 어느 LOD에 속하는지 
 struct FMeshLODRange
