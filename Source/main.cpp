@@ -284,7 +284,7 @@ HWND ShowLoadingWindow(HINSTANCE hInstance)
         Viewport.Height = static_cast<float>(WindowLayout.Height);
         Viewport.MaxDepth = 1;
         Context->RSSetViewports(1, &Viewport);
-        const LONG Height = static_cast<LONG>(WindowLayout.Height * 0.3f);
+        const LONG Height = static_cast<LONG>(WindowLayout.Height * 0.8f);
         const LONG Width = static_cast<LONG>(static_cast<double>(Height) * ImageDesc.Width / ImageDesc.Height);
         const LONG Left = (WindowLayout.Width - Width) / 2;
         const LONG Top = (WindowLayout.Height - Height) / 2;
