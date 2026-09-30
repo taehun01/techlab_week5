@@ -27,6 +27,8 @@ class FRenderView final {
 	// CollectScenePrimitives에서 컴포넌트별 FRenderData를 받는 작업 배열.
 	// 매 컴포넌트마다 clear만 하고 용량은 유지해 오브젝트별 할당/해제를 없앤다.
 	TArray<FRenderData> ComponentRenderDatas;
+	// AppendDrawItems(경량 경로)를 받는 작업 배열. 용도와 재사용 방식은 위와 같다.
+	TArray<FDrawItem> ComponentDrawItems;
 
 	// CollectScenePrimitives의 병렬 단계 결과 (컴포넌트별, 매 프레임 새로 계산).
 	struct FPrimitiveCullResult
@@ -39,8 +41,8 @@ class FRenderView final {
 	// 컴포넌트별 계산 결과. 매 프레임 크기만 맞추고 용량은 유지한다.
 	TArray<FPrimitiveCullResult> CullResults;
 
-	// 개별 렌더 데이터 드로우
-	void DrawRenderData(const FRenderData& Data);
+	// 큐 항목 하나를 드로우 (상수 버퍼 오프셋을 못 쓰는 경우와 반투명 패스용)
+	void DrawItem(const FDrawItem& Item);
 
 public:
 	FRenderView(FRenderer& Renderer);

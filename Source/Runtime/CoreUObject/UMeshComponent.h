@@ -26,7 +26,13 @@ public:
         TArray<FRenderData> Datas = GetRenderDatas(Camera);
         OutDatas.insert(OutDatas.end(), std::make_move_iterator(Datas.begin()), std::make_move_iterator(Datas.end()));
     }
-    virtual const FRenderData& GetPureRenderData() const { 
+    // 렌더 큐 수집용 경량 경로: FRenderData를 만들지 않고 섹션별 메시·머티리얼·인덱스 범위만 OutItems에 덧붙인다.
+    // Material이 nullptr인 항목은 호출 측이 "Simple"로 대체하고, PrimitiveIndex는 호출 측이 채운다.
+    // 지원하지 않는 컴포넌트는 false를 반환하고 호출 측은 AppendRenderDatas를 쓴다.
+    virtual bool AppendDrawItems(uint32 LodLevel, TArray<FDrawItem>& OutItems, FVector2& OutUVOffset) const {
+        return false;
+    }
+    virtual const FRenderData& GetPureRenderData() const {
         return RenderDatas.at(0); 
     }
 

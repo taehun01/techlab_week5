@@ -57,7 +57,7 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
     const FCamera& Camera = *View.Camera;
 
     // D3D 클립 변환을 ViewProj에 한 번만 곱해 둔다. 오브젝트마다 MVP에 곱하던 것과 결과는 같다.
-    // 이렇게 만든 MVP는 DrawRenderData에서 bConstantsInD3DClip=true로 그린다.
+    // 이렇게 만든 MVP는 FlushQueue에서 bConstantsInD3DClip=true로 그린다.
     const FMatrix ViewProjD3D = View.ViewProj * FRenderer::GetUnrealClipToD3DClip();
 
     // 1) 후보: 프러스텀 컬링 없이 씬의 모든 렌더 컴포넌트를 그린다 (화면 밖은 GPU 클리핑에 맡김).
@@ -128,7 +128,26 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
 
     TracyPlot("Render Components", static_cast<int64_t>(Candidates.size()));
 
-    // 3) 순차 단계: 보이는 컴포넌트의 렌더 데이터를 만들어 큐에 넣는다.
+    // 3) 순차 단계: 보이는 컴포넌트의 드로우 항목을 만들어 큐에 넣는다.
+    //    정적 메시는 AppendDrawItems(경량 경로)로 FRenderData 생성·복사 없이 포인터와 인덱스 범위만 넣고,
+    //    컴포넌트 단위 상수는 컴포넌트당 한 번만 저장한다. 나머지(빌보드·텍스트 등)는 기존 AppendRenderDatas 경로.
+    FMaterial* const SimpleMaterial = ResLib.GetMaterial(FName("Simple")).get();
+    const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
+
+    // 머티리얼의 블렌드 모드에 따라 불투명·반투명 큐로 분기 (Material·Mesh는 항상 유효)
+    const auto PushItem = [this](const FDrawItem& Item, uint32 QuantizedDistance)
+    {
+        const EBlendMode BlendMode = Item.Material->GetBlendMode();
+        if (BlendMode == EBlendMode::Additive || BlendMode == EBlendMode::Translucent)
+        {
+            RenderQueue.PushTranslucent(Item, GetSortKey(Item.Material, Item.Mesh, 0xffffff - QuantizedDistance));
+        }
+        else
+        {
+            RenderQueue.PushOpaque(Item, GetSortKey(Item.Material, Item.Mesh, QuantizedDistance));
+        }
+    };
+
     for (size_t CandidateIndex = 0; CandidateIndex < Candidates.size(); ++CandidateIndex)
     {
         const FPrimitiveCullResult& Cull = CullResults[CandidateIndex];
@@ -138,20 +157,25 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
         const FMatrix& World = Cull.World;
         const uint32 QuantizedDistance = Cull.QuantizedDistance;
 
-        bool bSelected = false;
-        if (MeshComponent->GetActorOwner() && MeshComponent->GetActorOwner() == SelectedActor)
-        {
-            bSelected = true;
-        }
+        const bool bSelected = SelectedActor && MeshComponent->GetActorOwner() == SelectedActor;
+        const uint32 LodLevel = bSelected ? 0u : Cull.LodLevel;
 
+        // 경량 경로 먼저 시도
+        TArray<FDrawItem>& DrawItems = ComponentDrawItems;
+        DrawItems.clear();
+        FVector2 UVOffset;
+        const bool bFastPath = MeshComponent->AppendDrawItems(LodLevel, DrawItems, UVOffset);
 
         TArray<FRenderData>& RenderDatas = ComponentRenderDatas;
         RenderDatas.clear();
-        MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas, bSelected ? 0 : Cull.LodLevel);
+        if (!bFastPath)
+        {
+            MeshComponent->AppendRenderDatas(*View.Camera, RenderDatas, LodLevel);
+        }
         // 그릴 데이터가 없으면 행렬 계산 전에 다음 컴포넌트로
-        if (RenderDatas.empty()) continue;
+        if (DrawItems.empty() && RenderDatas.empty()) continue;
 
-        // 공통 Matrix 및 Color 계산 (루프 밖 1회 수행)
+        // 공통 Matrix 및 Color 계산 (컴포넌트당 1회)
         const FMatrix MVP = World * ViewProjD3D;
 
         FVector FinalColorOverride = MeshComponent->GetColor();
@@ -167,47 +191,54 @@ void FRenderView::CollectScenePrimitives(const UScene& Scene, const FSceneView& 
             FinalColorOverrideAmount = 0.5f;
         }
 
-        const float DisableShading = (View.ViewMode == EViewModeIndex::VMI_Unlit) ? 1.0f : 0.0f;
+        if (bFastPath)
+        {
+            // 섹션들이 공유하는 상수를 한 번만 저장한다 (UVScale 등 나머지는 기본값)
+            uint32 PrimitiveIndex = 0u;
+            FObjectConstants& Constants = RenderQueue.AddPrimitive(PrimitiveIndex);
+            Constants.MVP = MVP;
+            Constants.World = World;
+            Constants.ColorOverride = FinalColorOverride;
+            Constants.ColorOverrideAmount = FinalColorOverrideAmount;
+            Constants.DisableShading = DisableShading;
+            Constants.UVOffset = UVOffset;
 
-        // 슬롯별 RenderData 순회 처리
+            for (FDrawItem& Item : DrawItems)
+            {
+                if (!Item.Material) Item.Material = SimpleMaterial;
+                Item.PrimitiveIndex = PrimitiveIndex;
+                PushItem(Item, QuantizedDistance);
+            }
+            continue;
+        }
+
+        // 기존 경로: 슬롯별 RenderData 순회 처리
         for (FRenderData& Data : RenderDatas)
         {
-            Data.bSelected = bSelected;
-
             // 인스턴스 데이터가 있으면 인스턴싱 큐로 분류
             if (!Data.Instances.empty())
             {
+                Data.bSelected = bSelected;
                 RenderQueue.PushInstancing(Data);
                 continue;
             }
 
-            Data.Constants.MVP = MVP;
-            Data.Constants.World = World;
-            Data.Constants.ColorOverride = FinalColorOverride;
-            Data.Constants.ColorOverrideAmount = FinalColorOverrideAmount;
-            Data.Constants.DisableShading = DisableShading;
-
-            // 머티리얼의 블렌드 모드에 따라 불투명 및 반투명 패스 자동 분기
-            // 메시/머티리얼은 여기서 한 번만 조회해 RenderData에 포인터로 보관
-            // 컴포넌트가 머티리얼 포인터를 채워 줬으면 문자열 맵 조회를 건너뛴다
+            // 컴포넌트가 포인터를 채워 줬으면 문자열 맵 조회를 건너뛴다
+            FStaticMesh* Mesh = Data.MeshPtr ? Data.MeshPtr : ResLib.GetMesh(Data.MeshId).get();
+            if (!Mesh) continue;
             FMaterial* Material = Data.MaterialPtr ? Data.MaterialPtr : ResLib.GetMaterial(Data.MaterialId).get();
-            // 컴포넌트가 메시 포인터를 채워 줬으면 문자열 맵 조회를 건너뛴다
-            if (!Data.MeshPtr)
-            {
-                Data.MeshPtr = ResLib.GetMesh(Data.MeshId).get();
-            }
-            Data.MaterialPtr = Material ? Material : ResLib.GetMaterial(FName("Simple")).get();
 
-            if (Material && (Material->GetBlendMode() == EBlendMode::Additive || Material->GetBlendMode() == EBlendMode::Translucent))
-            {
-                uint64 SortKey = GetSortKey(Data.MaterialPtr, Data.MeshPtr, 0xffffff - QuantizedDistance);
-                RenderQueue.PushTranslucent(Data, SortKey);
-            }
-            else
-            {
-                uint64 SortKey = GetSortKey(Data.MaterialPtr, Data.MeshPtr, QuantizedDistance);
-                RenderQueue.PushOpaque(Data, SortKey);
-            }
+            // 컴포넌트가 채운 상수(UVScale/UVOffset 등)를 기반으로 공통 값만 덮어쓴다
+            uint32 PrimitiveIndex = 0u;
+            FObjectConstants& Constants = RenderQueue.AddPrimitive(PrimitiveIndex);
+            Constants = Data.Constants;
+            Constants.MVP = MVP;
+            Constants.World = World;
+            Constants.ColorOverride = FinalColorOverride;
+            Constants.ColorOverrideAmount = FinalColorOverrideAmount;
+            Constants.DisableShading = DisableShading;
+
+            PushItem({ Mesh, Material ? Material : SimpleMaterial, Data.startidx, Data.indicesCount, PrimitiveIndex }, QuantizedDistance);
         }
     }
 }
@@ -489,17 +520,12 @@ void FRenderView::FlushLineBatch(const FMatrix& ViewProjection, const FName& Pip
     Renderer.FlushLineBatch(Constants, PipelineId);
 }
 
-void FRenderView::DrawRenderData(const FRenderData& Data)
+void FRenderView::DrawItem(const FDrawItem& Item)
 {
-    // 큐 항목만 들어오므로 MaterialPtr는 항상 유효하고,
-    // MeshPtr가 nullptr면 수집 단계에서 같은 MeshId로 이미 조회에 실패한 것이라 다시 찾지 않는다
-    FStaticMesh* Mesh = Data.MeshPtr;
-    FMaterial* Material = Data.MaterialPtr;
-    if (!Mesh) return;
-
     // FMaterial 자체에 연결된 파이프라인 및 텍스처로 바로 드로우
     // 큐의 MVP는 CollectScenePrimitives에서 이미 D3D 클립 좌표계로 만들었다
-    Renderer.Draw(*Mesh, *Material, Data.Constants, Data.startidx, Data.indicesCount,
+    Renderer.Draw(*Item.Mesh, *Item.Material, RenderQueue.GetPrimitiveConstants()[Item.PrimitiveIndex],
+        Item.StartIndex, Item.IndexCount,
         /*Slot*/ 0u, /*bApplyViewMode*/ true, /*bConstantsInD3DClip*/ true);
 }
 
@@ -507,43 +533,43 @@ void FRenderView::DrawRenderData(const FRenderData& Data)
 void FRenderView::FlushQueue(const FCamera& Camera)
 {
     ZoneScopedN("FlushQueue");
-    TracyPlot("Opaque Draws", static_cast<int64_t>(RenderQueue.GetOpaqueRenderQ().size()));
-    TracyPlot("Translucent Draws", static_cast<int64_t>(RenderQueue.GetTranslucentRenderQ().size()));
+    TracyPlot("Opaque Draws", static_cast<int64_t>(RenderQueue.GetOpaqueItems().size()));
+    TracyPlot("Translucent Draws", static_cast<int64_t>(RenderQueue.GetTranslucentItems().size()));
 
     // 불투명 패스
     {
         ZoneScopedN("Opaque");
         TracyD3D11Zone(Renderer.GetGpuProfiler(), "Opaque");
         const auto& OpaqueKeys = RenderQueue.GetOpaqueSortKeys();
-        const TArray<FRenderData>& OpaqueQ = RenderQueue.GetOpaqueRenderQ();
+        const TArray<FDrawItem>& OpaqueItems = RenderQueue.GetOpaqueItems();
+        const TArray<FObjectConstants>& PrimitiveConstants = RenderQueue.GetPrimitiveConstants();
         const uint32 OpaqueCount = static_cast<uint32>(OpaqueKeys.size());
 
         // 상수를 한 번에 올리고 드로우마다 슬롯 오프셋만 바인딩한다 (드로우마다 Map/Unmap 제거)
-        // 큐의 MaterialPtr는 수집 단계에서 항상 채워진다 (못 찾으면 항상 등록돼 있는 "Simple")
+        // 큐 항목의 Mesh·Material은 수집 단계에서 항상 유효하게 채워진다
         if (Renderer.BeginObjectConstants(OpaqueCount))
         {
             {
                 ZoneScopedN("Upload Object Constants");
                 for (uint32 i = 0; i < OpaqueCount; ++i)
                 {
-                    const FRenderData& Data = OpaqueQ[OpaqueKeys[i].second];
-                    Renderer.WriteObjectConstants(i, Data.Constants, *Data.MaterialPtr);
+                    const FDrawItem& Item = OpaqueItems[OpaqueKeys[i].second];
+                    Renderer.WriteObjectConstants(i, PrimitiveConstants[Item.PrimitiveIndex], *Item.Material);
                 }
                 Renderer.EndObjectConstants();
             }
 
             for (uint32 i = 0; i < OpaqueCount; ++i)
             {
-                const FRenderData& Data = OpaqueQ[OpaqueKeys[i].second];
-                if (!Data.MeshPtr) continue;
-                Renderer.DrawWithObjectConstants(i, *Data.MeshPtr, *Data.MaterialPtr, Data.startidx, Data.indicesCount);
+                const FDrawItem& Item = OpaqueItems[OpaqueKeys[i].second];
+                Renderer.DrawWithObjectConstants(i, *Item.Mesh, *Item.Material, Item.StartIndex, Item.IndexCount);
             }
         }
         else
         {
             for (const auto& [SortKey, Index] : OpaqueKeys)
             {
-                DrawRenderData(OpaqueQ[Index]);
+                DrawItem(OpaqueItems[Index]);
             }
         }
     }
@@ -565,7 +591,7 @@ void FRenderView::FlushQueue(const FCamera& Camera)
         TracyD3D11Zone(Renderer.GetGpuProfiler(), "Translucent");
         for (const auto& [SortKey, Index] : RenderQueue.GetTranslucentSortKeys())
         {
-            DrawRenderData(RenderQueue.GetTranslucentRenderQ()[Index]);
+            DrawItem(RenderQueue.GetTranslucentItems()[Index]);
         }
     }
 
@@ -584,7 +610,7 @@ void FRenderView::FlushQueue(const FCamera& Camera)
         Renderer.ClearTextInstances();
     }
 
-    STATS.UpdateRenderQueueNum(RenderQueue.GetOpaqueRenderQ().size(), RenderQueue.GetTranslucentRenderQ().size(), RenderQueue.GetTextRenderQ().size(), RenderQueue.GetInstancingRenderQ().size());
+    STATS.UpdateRenderQueueNum(RenderQueue.GetOpaqueItems().size(), RenderQueue.GetTranslucentItems().size(), RenderQueue.GetTextRenderQ().size(), RenderQueue.GetInstancingRenderQ().size());
 
     RenderQueue.Clear();
 }
@@ -617,8 +643,8 @@ void FRenderView::RenderPreviewScene(
 
 uint64 FRenderView::GetSortKey(FMaterial* InMaterial, FStaticMesh* InMesh, uint32 Depth)
 {
-    // InMaterial은 수집 단계에서 항상 채워진다 (못 찾으면 "Simple")
-    if (!InMesh || !InMaterial->GetPipeline())
+    // InMaterial·InMesh는 수집 단계에서 항상 유효하다 (메시가 없는 항목은 큐에 넣지 않는다)
+    if (!InMaterial->GetPipeline())
     {
         return 0xffffff;
     }

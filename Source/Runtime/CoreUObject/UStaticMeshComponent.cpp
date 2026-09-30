@@ -138,6 +138,54 @@ void UStaticMeshComponent::AppendRenderDatas(const FCamera& Camera, TArray<FRend
     }
 }
 
+bool UStaticMeshComponent::AppendDrawItems(uint32 LodLevel, TArray<FDrawItem>& OutItems, FVector2& OutUVOffset) const
+{
+    OutUVOffset = bIsMovingUV ? FVector2{ offset, 0.0f } : FVector2{ 0.0f, 0.0f };
+
+    if (!StaticMesh || !StaticMesh->StaticMeshAsset)
+    {
+        return true; // 그릴 것 없음
+    }
+
+    FStaticMesh* const MeshAsset = StaticMesh->StaticMeshAsset.get();
+    const auto& Sections = MeshAsset->Sections;
+
+    if (Sections.empty())
+    {
+        OutItems.push_back({ MeshAsset, ResolveMaterial(0), 0, -1, 0u });
+        return true;
+    }
+
+    // LodLevel은 SelectLod 결과(항상 LOD 개수 미만)이거나 0이라 범위를 다시 자르지 않는다
+    const size_t Count = std::min(StaticMesh->Materials.size(), Sections.size());
+    for (size_t i = 0; i < Count; ++i)
+    {
+        const auto& Lod = Sections[i].Lods[LodLevel];
+        OutItems.push_back({ MeshAsset, ResolveMaterial(static_cast<int32>(i)),
+            static_cast<int32>(Lod.FirstIndex), static_cast<int32>(Lod.IndexCount), 0u });
+    }
+    return true;
+}
+
+FMaterial* UStaticMeshComponent::ResolveMaterial(int32 Slot) const
+{
+    // 1) 컴포넌트 오버라이드
+    if (Slot < static_cast<int32>(OverrideMaterials.size()) && !OverrideMaterials[Slot].IsNone())
+    {
+        return FRenderResourceLibrary::Get().GetMaterial(OverrideMaterials[Slot]).get();
+    }
+
+    // 2) 메시 슬롯 (UStaticMesh가 보관한 참조)
+    if (Slot < StaticMesh->GetMaterialSlotCount())
+    {
+        FName SlotMaterialId;
+        return StaticMesh->ResolveMaterialSlot(Slot, SlotMaterialId);
+    }
+
+    // 3) 슬롯이 없으면 호출 측이 기본 머티리얼로 대체
+    return nullptr;
+}
+
 const FRenderData& UStaticMeshComponent::GetPureRenderData() const
 {
     FRenderData& MutableData = const_cast<FRenderData&>(RenderDatas.at(0));
