@@ -82,7 +82,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance,
 
   // 사과 50만개 테스트용 코드
   UStaticMesh* RedAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("apple_mid");
-  UStaticMesh* YellowAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("bitten_apple_mid");
+  UStaticMesh* YellowAppleMesh = FRenderResourceLibrary::Get().GetUStaticMesh("apple_mid");
 
   const float Spacing = 1.f;
 

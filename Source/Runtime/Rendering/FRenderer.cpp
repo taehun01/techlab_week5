@@ -512,6 +512,7 @@ bool FRenderer::InitializeDeviceAndSwapChain(HWND Window) {
     return false;
   }
 
+
   RECT ClientRect{};
   GetClientRect(Window, &ClientRect);
 
