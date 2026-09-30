@@ -132,7 +132,7 @@ void FMeshBVH::Clear()
 	Triangles.clear();
 }
 
-bool FMeshBVH::QueryRayClosest(const FRay& Ray, FMeshBVHRayHit& OutHit) const
+bool FMeshBVH::QueryRayClosest(const FRay& Ray, FMeshBVHRayHit& OutHit, float MaxT) const
 {
 	if (Nodes.empty())
 	{
@@ -140,7 +140,7 @@ bool FMeshBVH::QueryRayClosest(const FRay& Ray, FMeshBVHRayHit& OutHit) const
 	}
 
 	const FRayCache RayCache(Ray);
-	float ClosestT = (std::numeric_limits<float>::max)();
+	float ClosestT = MaxT;
 	int32 ClosestTriangle = -1;
 
 	struct FStackEntry
@@ -399,4 +399,4 @@ float FMeshBVH::SurfaceArea(const FAxisAlignedBoundingBox& Box)
 {
 	const FVector E = Box.Max - Box.Min;
 	return 2.0f * (E.X * E.Y + E.Y * E.Z + E.Z * E.X);
-}
+}

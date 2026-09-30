@@ -91,6 +91,8 @@ public:
     void Reset() { *this = FPickingStat{}; }
   };
   bool bUseOctreePicking = true;
+  bool bUseSceneBVHPicking = true; // 켜져 있으면 옥트리/브루트포스 선택보다 우선한다
+  FPickingStat SceneBVHPickingStat;
   FPickingStat OctreePickingStat;
   FPickingStat BruteForcePickingStat;
   FGizmo &GetGizmo() { return Gizmo; }

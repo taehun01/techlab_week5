@@ -42,3 +42,27 @@ bool FStaticMeshBVH::Raycast(const FRay& WorldRay, const FMatrix& ModelMatrix, f
 	OutImpactPoint = WorldRay.Origin + WorldRay.Direction * Hit.T;
 	return true;
 }
+
+
+bool FStaticMeshBVH::RaycastInverse(const FRay& WorldRay, const FMatrix& InvModelMatrix, float MaxT, float& OutDistance) const
+{
+	if (!Tree.IsBuilt())
+	{
+		return false;
+	}
+
+	// 방향을 정규화하지 않으므로 로컬 광선의 t가 곧 월드 광선의 t다.
+	const FRay LocalRay{
+		InvModelMatrix.TransformPointRow(WorldRay.Origin),
+		InvModelMatrix.TransformPointRow(WorldRay.Direction, 0.0f)
+	};
+
+	FMeshBVHRayHit Hit;
+	if (!Tree.QueryRayClosest(LocalRay, Hit, MaxT))
+	{
+		return false;
+	}
+
+	OutDistance = Hit.T;
+	return true;
+}

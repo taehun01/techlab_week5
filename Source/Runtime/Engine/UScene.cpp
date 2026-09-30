@@ -40,6 +40,7 @@ void UScene::Release() {
 
   RenderComponents.clear();
   SceneOctree.Clear();
+  SceneBVH.Clear();
   RenderResourceLibrary = nullptr;
   bInitialized = false;
 
@@ -186,12 +187,14 @@ void UScene::AddRenderComponent(UMeshComponent *mesh) {
       RenderComponents.end()) {
     RenderComponents.push_back(mesh);
     SceneOctree.Register(mesh);
+    SceneBVH.Register(mesh);
   }
 }
 
 void UScene::RemoveRenderComponent(UMeshComponent *mesh) {
   if (std::erase(RenderComponents, mesh) > 0) {
     SceneOctree.Unregister(mesh);
+    SceneBVH.Unregister(mesh);
   }
 }
 
@@ -203,6 +206,7 @@ void UScene::MarkBoundsDirty(USceneComponent *Component) {
   if (Actor == nullptr) {
     if (auto *Mesh = Component->Cast<UMeshComponent>()) {
       SceneOctree.MarkDirty(Mesh);
+      SceneBVH.MarkDirty(Mesh);
     }
     return;
   }
@@ -211,8 +215,14 @@ void UScene::MarkBoundsDirty(USceneComponent *Component) {
     auto *Mesh = Attached ? Attached->Cast<UMeshComponent>() : nullptr;
     if (Mesh && Mesh->IsRegistered()) {
       SceneOctree.MarkDirty(Mesh);
+      SceneBVH.MarkDirty(Mesh);
     }
   }
+}
+
+const FSceneBVH &UScene::GetSceneBVH() {
+  SceneBVH.Flush();
+  return SceneBVH;
 }
 
 FSceneOctree &UScene::GetSceneOctree() {
