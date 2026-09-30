@@ -353,9 +353,11 @@ HWND CreateWindowHandle(HINSTANCE Instance, HWND& OutSplashWnd) {
 
   OutSplashWnd = ShowLoadingWindow(Instance);
 
-  const FWindowLayout WindowLayout = GetWindowLayout();
-  constexpr DWORD MainStyle = WS_OVERLAPPEDWINDOW;
-  const RECT WindowRect = ToWindowRect(WindowLayout, MainStyle, 0);
+  // 테두리 없는 전체화면: 주 모니터 전체를 덮는 팝업 창
+  MONITORINFO MonitorInfo{ sizeof(MONITORINFO) };
+  GetMonitorInfoW(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY), &MonitorInfo);
+  constexpr DWORD MainStyle = WS_POPUP;
+  const RECT WindowRect = MonitorInfo.rcMonitor;
 
 
   HWND Window = CreateWindowExW(0, WindowClass.lpszClassName, WindowName,
@@ -396,6 +398,13 @@ LRESULT CALLBACK WindowCallback(HWND Window, UINT Message, WPARAM WParam,
   switch (Message) {
   case WM_DESTROY:
     PostQuitMessage(0);
+    break;
+
+  case WM_KEYDOWN:
+    // ImGui 텍스트 입력 중에는 ESC를 입력 취소로 쓰도록 종료하지 않는다
+    if (WParam == VK_ESCAPE && !ImGui::GetIO().WantTextInput) {
+      DestroyWindow(Window);
+    }
     break;
 
   case WM_SIZE: {
