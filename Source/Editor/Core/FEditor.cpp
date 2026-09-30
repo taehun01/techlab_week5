@@ -68,11 +68,11 @@ void FEditor::Process() {
     SelectedActor->SetTransform(SelectedTransform);
   }
 
-  // 이번 프레임의 트랜스폼/메시 변경이 모두 끝났으므로 옥트리에 반영한다.
+  // 이번 프레임의 트랜스폼/메시 변경이 모두 끝났으므로 씬 BVH에 반영한다.
   // 클릭 시점에는 반영할 것이 남지 않아 피킹 지연에 갱신 비용이 섞이지 않는다.
   if (SceneManager && SceneManager->CurrentScene) {
-    ZoneScopedN("FlushSceneOctree");
-    SceneManager->CurrentScene->FlushSceneOctree();
+    ZoneScopedN("FlushSceneBVH");
+    SceneManager->CurrentScene->FlushSceneBVH();
   }
 
   SaveState();
@@ -348,4 +348,4 @@ void FEditor::ResetSplitViewportCameras()
     EditorViewports[3].ViewportCamera.Yaw = 90.0f;
     EditorViewports[3].ViewportCamera.Projection.ProjectionType = EProjectionType::Orthographic;
     EditorViewports[3].ViewportCamera.Projection.Height = 10.0f;
-}
+}
